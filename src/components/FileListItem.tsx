@@ -5,23 +5,26 @@ import { Button } from '@/components/ui/button'
 import { FitFileData } from '@/lib/types'
 import { formatDuration, formatDistance, formatDate } from '@/lib/fitParser'
 import { motion } from 'framer-motion'
+import type { Language } from '@/lib/i18n'
 
 interface FileListItemProps {
   fileData: FitFileData
   onRemove: () => void
+  lang: Language
+  t: any
 }
 
-export const FileListItem = ({ fileData, onRemove }: FileListItemProps) => {
+export const FileListItem = ({ fileData, onRemove, lang, t }: FileListItemProps) => {
   const getStatusBadge = () => {
     switch (fileData.status) {
       case 'parsing':
-        return <Badge variant="secondary">Parsing...</Badge>
+        return <Badge variant="secondary">{t.parsing}</Badge>
       case 'parsed':
-        return <Badge className="bg-accent text-accent-foreground"><CheckCircle className="mr-1" size={14} />Parsed</Badge>
+        return <Badge className="bg-accent text-accent-foreground"><CheckCircle className="mr-1" size={14} />{t.parsed}</Badge>
       case 'error':
-        return <Badge variant="destructive"><Warning className="mr-1" size={14} />Error</Badge>
+        return <Badge variant="destructive"><Warning className="mr-1" size={14} />{t.error}</Badge>
       default:
-        return <Badge variant="outline">Pending</Badge>
+        return <Badge variant="outline">{t.pending}</Badge>
     }
   }
 
@@ -60,7 +63,7 @@ export const FileListItem = ({ fileData, onRemove }: FileListItemProps) => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 {fileData.metadata.sport && (
                   <div>
-                    <p className="text-muted-foreground text-xs">Sport</p>
+                    <p className="text-muted-foreground text-xs">{t.sport}</p>
                     <p className="font-medium capitalize">{fileData.metadata.sport}</p>
                   </div>
                 )}
@@ -68,14 +71,14 @@ export const FileListItem = ({ fileData, onRemove }: FileListItemProps) => {
                   <div className="flex items-center gap-1">
                     <Clock size={16} className="text-muted-foreground" />
                     <div>
-                      <p className="text-muted-foreground text-xs">Duration</p>
+                      <p className="text-muted-foreground text-xs">{t.duration}</p>
                       <p className="font-medium">{formatDuration(fileData.metadata.duration)}</p>
                     </div>
                   </div>
                 )}
                 {fileData.metadata.distance !== undefined && (
                   <div>
-                    <p className="text-muted-foreground text-xs">Distance</p>
+                    <p className="text-muted-foreground text-xs">{t.distance}</p>
                     <p className="font-medium">{formatDistance(fileData.metadata.distance)}</p>
                   </div>
                 )}
@@ -83,8 +86,8 @@ export const FileListItem = ({ fileData, onRemove }: FileListItemProps) => {
                   <div className="flex items-center gap-1">
                     <CalendarBlank size={16} className="text-muted-foreground" />
                     <div>
-                      <p className="text-muted-foreground text-xs">Start Time</p>
-                      <p className="font-medium">{formatDate(fileData.metadata.startTime)}</p>
+                      <p className="text-muted-foreground text-xs">{t.startTime}</p>
+                      <p className="font-medium">{formatDate(fileData.metadata.startTime, lang)}</p>
                     </div>
                   </div>
                 )}

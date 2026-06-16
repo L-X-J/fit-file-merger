@@ -2,22 +2,25 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { MergeOptions } from '@/lib/types'
+import type { Language } from '@/lib/i18n'
 
 interface MergeOptionsCardProps {
   options: MergeOptions
   onOptionsChange: (options: MergeOptions) => void
+  lang: Language
+  t: any
 }
 
-export const MergeOptionsCard = ({ options, onOptionsChange }: MergeOptionsCardProps) => {
+export const MergeOptionsCard = ({ options, onOptionsChange, lang, t }: MergeOptionsCardProps) => {
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Merge Options</h3>
+      <h3 className="text-lg font-semibold mb-4">{t.mergeOptions}</h3>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <Label htmlFor="sort-chronologically">Sort Chronologically</Label>
+            <Label htmlFor="sort-chronologically">{t.sortChronologically}</Label>
             <p className="text-sm text-muted-foreground">
-              Reorder all data points by timestamp
+              {t.sortDescription}
             </p>
           </div>
           <Switch
@@ -31,9 +34,9 @@ export const MergeOptionsCard = ({ options, onOptionsChange }: MergeOptionsCardP
 
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <Label htmlFor="preserve-all-data">Preserve All Data</Label>
+            <Label htmlFor="preserve-all-data">{t.preserveAllData}</Label>
             <p className="text-sm text-muted-foreground">
-              Keep all data fields from source files
+              {t.preserveDescription}
             </p>
           </div>
           <Switch
@@ -47,9 +50,9 @@ export const MergeOptionsCard = ({ options, onOptionsChange }: MergeOptionsCardP
 
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <Label htmlFor="remove-duplicates">Remove Duplicate Timestamps</Label>
+            <Label htmlFor="remove-duplicates">{t.removeDuplicates}</Label>
             <p className="text-sm text-muted-foreground">
-              Filter out records with identical timestamps
+              {t.removeDuplicatesDescription}
             </p>
           </div>
           <Switch

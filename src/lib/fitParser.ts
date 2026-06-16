@@ -77,8 +77,14 @@ const extractMetadata = (data: any) => {
 
   if (data.records && data.records.length > 0) {
     const firstRecord = data.records[0]
+    const lastRecord = data.records[data.records.length - 1]
+    
     if (firstRecord.timestamp && !metadata.startTime) {
       metadata.startTime = new Date(firstRecord.timestamp)
+    }
+    
+    if (!metadata.distance && lastRecord.distance !== undefined) {
+      metadata.distance = lastRecord.distance
     }
   }
 
@@ -103,9 +109,9 @@ export const formatDistance = (meters?: number): string => {
   return `${km.toFixed(2)} km`
 }
 
-export const formatDate = (date?: Date): string => {
+export const formatDate = (date?: Date, lang: string = 'en'): string => {
   if (!date) return 'N/A'
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

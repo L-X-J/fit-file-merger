@@ -2,13 +2,16 @@ import { useRef, useState } from 'react'
 import { UploadSimple } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { Language } from '@/lib/i18n'
 
 interface FileUploadZoneProps {
   onFilesSelected: (files: File[]) => void
   disabled?: boolean
+  lang: Language
+  t: any
 }
 
-export const FileUploadZone = ({ onFilesSelected, disabled }: FileUploadZoneProps) => {
+export const FileUploadZone = ({ onFilesSelected, disabled, lang, t }: FileUploadZoneProps) => {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -55,6 +58,13 @@ export const FileUploadZone = ({ onFilesSelected, disabled }: FileUploadZoneProp
     }
   }
 
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!disabled) {
+      fileInputRef.current?.click()
+    }
+  }
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -73,17 +83,17 @@ export const FileUploadZone = ({ onFilesSelected, disabled }: FileUploadZoneProp
           <UploadSimple size={32} className="text-primary" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold mb-1">Upload FIT Files</h3>
+          <h3 className="text-lg font-semibold mb-1">{t.uploadTitle}</h3>
           <p className="text-sm text-muted-foreground">
-            Drag and drop files here, or click to browse
+            {t.uploadDescription}
           </p>
           <p className="text-xs text-muted-foreground mt-2">
-            Supports .fit files from Garmin, Polar, Suunto devices
+            {t.uploadSupport}
           </p>
         </div>
-        <Button variant="outline" disabled={disabled} onClick={(e) => e.stopPropagation()}>
+        <Button variant="outline" disabled={disabled} onClick={handleButtonClick}>
           <UploadSimple className="mr-2" />
-          Select Files
+          {t.selectFiles}
         </Button>
       </div>
       <input

@@ -1,8 +1,9 @@
 import { Decoder, Stream } from '@garmin/fitsdk'
-import { FitFileData } from './types'
+import { FitFileData, MergeOptions } from './types'
+import { mergeFitFiles as mergeFitFilesLib, downloadFitFile } from './fitMerger'
 
-export const parseFitFile = async (fileData: FitFileData): Promise<FitFileData> => {
-  return new Promise((resolve) => {
+export const parseFitFile = async (file: File): Promise<{ data: any; metadata: FitFileData['metadata'] }> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
     reader.onload = (e) => {
@@ -12,20 +13,12 @@ export const parseFitFile = async (fileData: FitFileData): Promise<FitFileData> 
         const decoder = new Decoder(stream)
         
         if (!decoder.isFIT()) {
-          resolve({
-            ...fileData,
-            status: 'error',
-            error: 'Not a valid FIT file'
-          })
+          reject(new Error('Not a valid FIT file'))
           return
         }
 
         if (!decoder.checkIntegrity()) {
-          resolve({
-            ...fileData,
-            status: 'error',
-            error: 'FIT file integrity check failed'
-          })
+          reject(new Error('FIT file integrity check failed'))
           return
         }
 
@@ -38,30 +31,31 @@ export const parseFitFile = async (fileData: FitFileData): Promise<FitFileData> 
         const metadata = extractMetadata(messages)
         
         resolve({
-          ...fileData,
-          status: 'parsed',
-          parsed: { messages, rawBuffer: arrayBuffer },
+          data: { messages, rawBuffer: arrayBuffer },
           metadata
         })
       } catch (error) {
-        resolve({
-          ...fileData,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Failed to parse FIT file'
-        })
+        reject(error instanceof Error ? error : new Error('Failed to parse FIT file'))
       }
     }
 
     reader.onerror = () => {
-      resolve({
-        ...fileData,
-        status: 'error',
-        error: 'Failed to read file'
-      })
+      reject(new Error('Failed to read file'))
     }
 
-    reader.readAsArrayBuffer(fileData.file)
+    reader.readAsArrayBuffer(file)
   })
+}
+
+export const mergeFitFiles = async (files: FitFileData[], options: MergeOptions): Promise<Blob> => {
+  return mergeFitFilesLib(files, options)
+}
+
+export const downloadMergedFile = async (blob: Blob): Promise<string> => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+  const filename = `merged-activity-${timestamp}.fit`
+  downloadFitFile(blob, filename)
+  return filename
 }
 
 const extractMetadata = (messages: any) => {

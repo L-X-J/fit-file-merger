@@ -118,7 +118,7 @@ export const TrackMap = ({ files, onClose, lang, t }: TrackMapProps) => {
       }
     })
 
-    const avgSpeed = totalMovingTime > 0 ? (totalDistance / totalMovingTime) * 3.6 : 0
+    const avgSpeed = totalMovingTime > 0 ? (totalDistance / (totalMovingTime / 3600)) : 0
 
     return { totalDistance, totalTime, totalMovingTime, avgSpeed, maxSpeed, totalElevation }
   }

@@ -103,10 +103,9 @@ export const formatDuration = (seconds?: number): string => {
   return `${minutes}m ${secs}s`
 }
 
-export const formatDistance = (meters?: number): string => {
-  if (!meters) return 'N/A'
-  const km = meters / 1000
-  return `${km.toFixed(2)} km`
+export const formatDistance = (distanceInKm?: number): string => {
+  if (!distanceInKm) return 'N/A'
+  return `${distanceInKm.toFixed(2)} km`
 }
 
 export const formatDate = (date?: Date, lang: string = 'en'): string => {

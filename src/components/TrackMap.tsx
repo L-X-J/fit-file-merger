@@ -118,9 +118,6 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
         if (session.max_speed) {
           maxSpeed = Math.max(maxSpeed, session.max_speed)
         }
-        if (session.total_ascent !== undefined && session.total_ascent !== null) {
-          totalElevation += session.total_ascent
-        }
         if (session.max_power) {
           maxPower = Math.max(maxPower, session.max_power)
         }
@@ -151,10 +148,7 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
               fileElevationGain += diff
             }
           }
-          
-          if (fileElevationGain > 0) {
-            totalElevation = (totalElevation === 0 ? 0 : totalElevation) + fileElevationGain
-          }
+          totalElevation += fileElevationGain
         }
 
         if (powers.length > 0 && maxPower === 0) {

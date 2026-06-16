@@ -84,7 +84,7 @@ function App() {
 
     setIsMerging(true)
     try {
-      const mergedBlob = mergeFitFiles(validFiles, mergeOptions)
+      const mergedBlob = await mergeFitFiles(validFiles, mergeOptions)
       setMergedData({ files: validFiles, blob: mergedBlob })
       toast.success(t.mergeSuccess)
       setCurrentStep(3)

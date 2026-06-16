@@ -1,7 +1,7 @@
 import { FitFileData, MergeOptions } from './types'
 import { Buffer } from 'buffer'
 
-export const mergeFitFiles = (files: FitFileData[], options: MergeOptions): Blob => {
+export const mergeFitFiles = async (files: FitFileData[], options: MergeOptions): Promise<Blob> => {
   const validFiles = files.filter(f => f.status === 'parsed' && f.parsed)
   
   if (validFiles.length === 0) {
@@ -76,25 +76,67 @@ export const mergeFitFiles = (files: FitFileData[], options: MergeOptions): Blob
     activity: validFiles[0].parsed.activity || {}
   }
 
-  const fitBuffer = createFitFile(mergedData)
+  const fitBuffer = await createFitFile(mergedData, validFiles)
   return new Blob([fitBuffer], { type: 'application/octet-stream' })
 }
 
-const createFitFile = (data: any): Buffer => {
-  const header = Buffer.alloc(14)
-  header.writeUInt8(14, 0)
-  header.writeUInt8(0x10, 1)
-  header.writeUInt16LE(2064, 2)
-  header.writeUInt32LE(0, 4)
-  header.write('.FIT', 8, 4, 'ascii')
-  
-  const dataMessages = Buffer.alloc(0)
-  
-  const crc = calculateCRC(Buffer.concat([header, dataMessages]))
-  const crcBuffer = Buffer.alloc(2)
-  crcBuffer.writeUInt16LE(crc, 0)
-  
-  return Buffer.concat([header, dataMessages, crcBuffer])
+const readFileAsBuffer = (file: File): Promise<Buffer> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer
+      resolve(Buffer.from(arrayBuffer))
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+const createFitFile = async (mergedData: any, originalFiles: FitFileData[]): Promise<Buffer> => {
+  try {
+    const fileBuffers = await Promise.all(
+      originalFiles.map(fileData => readFileAsBuffer(fileData.file))
+    )
+    
+    const firstFileBuffer = fileBuffers[0]
+    const headerSize = firstFileBuffer.readUInt8(0)
+    const protocolVersion = firstFileBuffer.readUInt8(1)
+    const profileVersion = firstFileBuffer.readUInt16LE(2)
+    
+    const header = Buffer.alloc(14)
+    header.writeUInt8(headerSize, 0)
+    header.writeUInt8(protocolVersion, 1)
+    header.writeUInt16LE(profileVersion, 2)
+    
+    const dataRecords: Buffer[] = []
+    
+    fileBuffers.forEach((fileBuffer) => {
+      const fileHeaderSize = fileBuffer.readUInt8(0)
+      const dataSize = fileBuffer.readUInt32LE(4)
+      
+      const dataStart = fileHeaderSize
+      const dataEnd = dataStart + dataSize
+      const dataSection = fileBuffer.slice(dataStart, dataEnd)
+      
+      dataRecords.push(dataSection)
+    })
+    
+    const mergedDataBuffer = Buffer.concat(dataRecords)
+    
+    header.writeUInt32LE(mergedDataBuffer.length, 4)
+    header.write('.FIT', 8, 4, 'ascii')
+    
+    const headerCRC = calculateCRC(header.slice(0, 12))
+    header.writeUInt16LE(headerCRC, 12)
+    
+    const fileCRC = calculateCRC(Buffer.concat([header, mergedDataBuffer]))
+    const crcBuffer = Buffer.alloc(2)
+    crcBuffer.writeUInt16LE(fileCRC, 0)
+    
+    return Buffer.concat([header, mergedDataBuffer, crcBuffer])
+  } catch (error) {
+    throw new Error('Failed to create merged FIT file: ' + (error instanceof Error ? error.message : 'Unknown error'))
+  }
 }
 
 const calculateCRC = (buffer: Buffer): number => {

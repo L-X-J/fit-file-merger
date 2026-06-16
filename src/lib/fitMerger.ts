@@ -1,5 +1,5 @@
 import { FitFileData, MergeOptions } from './types'
-import { Buffer } from 'buffer'
+import { Encoder } from '@garmin/fitsdk'
 
 export const mergeFitFiles = async (files: FitFileData[], options: MergeOptions): Promise<Blob> => {
   const validFiles = files.filter(f => f.status === 'parsed' && f.parsed)
@@ -10,153 +10,141 @@ export const mergeFitFiles = async (files: FitFileData[], options: MergeOptions)
 
   let mergedRecords: any[] = []
   let mergedLaps: any[] = []
-  let mergedSessions: any[] = []
-  const fileIds: any[] = []
+  let totalAscent = 0
+  let totalDistance = 0
+  let totalElapsedTime = 0
+  let totalTimerTime = 0
+  let totalCalories = 0
+  let firstTimestamp: Date | null = null
+  let lastTimestamp: Date | null = null
   
   validFiles.forEach((fileData) => {
-    const parsed = fileData.parsed
+    const messages = fileData.parsed.messages
     
-    if (parsed.records) {
-      mergedRecords = mergedRecords.concat(parsed.records)
+    if (messages.recordMesgs) {
+      mergedRecords = mergedRecords.concat(messages.recordMesgs)
     }
     
-    if (parsed.laps) {
-      mergedLaps = mergedLaps.concat(parsed.laps)
+    if (messages.lapMesgs) {
+      mergedLaps = mergedLaps.concat(messages.lapMesgs)
     }
     
-    if (parsed.sessions) {
-      mergedSessions = mergedSessions.concat(parsed.sessions)
-    }
-    
-    if (parsed.file_ids && parsed.file_ids.length > 0) {
-      fileIds.push(parsed.file_ids[0])
+    if (messages.sessionMesgs && messages.sessionMesgs.length > 0) {
+      const session = messages.sessionMesgs[0]
+      
+      if (session.totalAscent !== undefined && session.totalAscent !== null) {
+        totalAscent += session.totalAscent
+      }
+      
+      if (session.totalDistance !== undefined) {
+        totalDistance += session.totalDistance
+      }
+      
+      if (session.totalElapsedTime !== undefined) {
+        totalElapsedTime += session.totalElapsedTime
+      }
+      
+      if (session.totalTimerTime !== undefined) {
+        totalTimerTime += session.totalTimerTime
+      }
+      
+      if (session.totalCalories !== undefined) {
+        totalCalories += session.totalCalories
+      }
     }
   })
 
   if (options.sortChronologically && mergedRecords.length > 0) {
     mergedRecords.sort((a, b) => {
-      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
-      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
+      const timeA = a.timestamp ? a.timestamp.getTime() : 0
+      const timeB = b.timestamp ? b.timestamp.getTime() : 0
       return timeA - timeB
     })
     
     if (mergedLaps.length > 0) {
       mergedLaps.sort((a, b) => {
-        const timeA = a.start_time ? new Date(a.start_time).getTime() : 0
-        const timeB = b.start_time ? new Date(b.start_time).getTime() : 0
+        const timeA = a.startTime ? a.startTime.getTime() : 0
+        const timeB = b.startTime ? b.startTime.getTime() : 0
         return timeA - timeB
       })
     }
-    
-    if (mergedSessions.length > 0) {
-      mergedSessions.sort((a, b) => {
-        const timeA = a.start_time ? new Date(a.start_time).getTime() : 0
-        const timeB = b.start_time ? new Date(b.start_time).getTime() : 0
-        return timeA - timeB
-      })
-    }
+  }
+
+  if (mergedRecords.length > 0) {
+    firstTimestamp = mergedRecords[0].timestamp
+    lastTimestamp = mergedRecords[mergedRecords.length - 1].timestamp
   }
 
   if (options.removeDuplicateTimestamps && mergedRecords.length > 0) {
     const seen = new Set<number>()
     mergedRecords = mergedRecords.filter((record) => {
       if (!record.timestamp) return true
-      const time = new Date(record.timestamp).getTime()
+      const time = record.timestamp.getTime()
       if (seen.has(time)) return false
       seen.add(time)
       return true
     })
   }
 
-  const mergedData = {
-    file_ids: fileIds.length > 0 ? [fileIds[0]] : [],
-    records: mergedRecords,
-    laps: mergedLaps,
-    sessions: mergedSessions,
-    activity: validFiles[0].parsed.activity || {}
+  const encoder = new Encoder()
+  
+  const firstFile = validFiles[0].parsed.messages
+  
+  if (firstFile.fileIdMesgs && firstFile.fileIdMesgs.length > 0) {
+    const fileId = { ...firstFile.fileIdMesgs[0] }
+    fileId.timeCreated = firstTimestamp || new Date()
+    encoder.writeMesg(fileId)
   }
 
-  const fitBuffer = await createFitFile(mergedData, validFiles)
-  return new Blob([fitBuffer], { type: 'application/octet-stream' })
-}
-
-const readFileAsBuffer = (file: File): Promise<Buffer> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const arrayBuffer = e.target?.result as ArrayBuffer
-      resolve(Buffer.from(arrayBuffer))
-    }
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsArrayBuffer(file)
+  mergedRecords.forEach(record => {
+    encoder.writeMesg(record)
   })
-}
 
-const createFitFile = async (mergedData: any, originalFiles: FitFileData[]): Promise<Buffer> => {
-  try {
-    const fileBuffers = await Promise.all(
-      originalFiles.map(fileData => readFileAsBuffer(fileData.file))
-    )
-    
-    const firstFileBuffer = fileBuffers[0]
-    const headerSize = firstFileBuffer.readUInt8(0)
-    const protocolVersion = firstFileBuffer.readUInt8(1)
-    const profileVersion = firstFileBuffer.readUInt16LE(2)
-    
-    const header = Buffer.alloc(14)
-    header.writeUInt8(headerSize, 0)
-    header.writeUInt8(protocolVersion, 1)
-    header.writeUInt16LE(profileVersion, 2)
-    
-    const dataRecords: Buffer[] = []
-    
-    fileBuffers.forEach((fileBuffer) => {
-      const fileHeaderSize = fileBuffer.readUInt8(0)
-      const dataSize = fileBuffer.readUInt32LE(4)
-      
-      const dataStart = fileHeaderSize
-      const dataEnd = dataStart + dataSize
-      const dataSection = fileBuffer.slice(dataStart, dataEnd)
-      
-      dataRecords.push(dataSection)
+  if (mergedLaps.length > 0) {
+    mergedLaps.forEach(lap => {
+      encoder.writeMesg(lap)
     })
-    
-    const mergedDataBuffer = Buffer.concat(dataRecords)
-    
-    header.writeUInt32LE(mergedDataBuffer.length, 4)
-    header.write('.FIT', 8, 4, 'ascii')
-    
-    const headerCRC = calculateCRC(header.slice(0, 12))
-    header.writeUInt16LE(headerCRC, 12)
-    
-    const fileCRC = calculateCRC(Buffer.concat([header, mergedDataBuffer]))
-    const crcBuffer = Buffer.alloc(2)
-    crcBuffer.writeUInt16LE(fileCRC, 0)
-    
-    return Buffer.concat([header, mergedDataBuffer, crcBuffer])
-  } catch (error) {
-    throw new Error('Failed to create merged FIT file: ' + (error instanceof Error ? error.message : 'Unknown error'))
+  } else if (mergedRecords.length > 0) {
+    const lapMessage: any = {
+      mesgNum: 19,
+      timestamp: lastTimestamp,
+      startTime: firstTimestamp,
+      totalElapsedTime: totalElapsedTime,
+      totalTimerTime: totalTimerTime,
+      totalDistance: totalDistance,
+      totalAscent: totalAscent,
+      totalCalories: totalCalories
+    }
+    encoder.writeMesg(lapMessage)
   }
-}
 
-const calculateCRC = (buffer: Buffer): number => {
-  const crcTable = [
-    0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
-    0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400
-  ]
-  
-  let crc = 0
-  for (let i = 0; i < buffer.length; i++) {
-    const byte = buffer[i]
-    let tmp = crcTable[crc & 0xF]
-    crc = (crc >> 4) & 0x0FFF
-    crc = crc ^ tmp ^ crcTable[byte & 0xF]
-    tmp = crcTable[crc & 0xF]
-    crc = (crc >> 4) & 0x0FFF
-    crc = crc ^ tmp ^ crcTable[(byte >> 4) & 0xF]
+  const sessionMessage: any = {
+    mesgNum: 18,
+    timestamp: lastTimestamp,
+    startTime: firstTimestamp,
+    totalElapsedTime: totalElapsedTime,
+    totalTimerTime: totalTimerTime,
+    totalDistance: totalDistance,
+    totalAscent: totalAscent,
+    totalCalories: totalCalories,
+    sport: firstFile.sessionMesgs?.[0]?.sport || 'cycling',
+    subSport: firstFile.sessionMesgs?.[0]?.subSport
   }
-  
-  return crc
+  encoder.writeMesg(sessionMessage)
+
+  const activityMessage: any = {
+    mesgNum: 34,
+    timestamp: lastTimestamp,
+    totalTimerTime: totalTimerTime,
+    numSessions: 1,
+    type: 'manual',
+    event: 'activity',
+    eventType: 'stop'
+  }
+  encoder.writeMesg(activityMessage)
+
+  const fitData = encoder.close()
+  return new Blob([fitData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
 }
 
 export const downloadFitFile = (blob: Blob, filename: string) => {

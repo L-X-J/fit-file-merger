@@ -1,47 +1,53 @@
-import FitParser from 'fit-file-parser'
-import { Buffer } from 'buffer'
+import { Decoder, Stream } from '@garmin/fitsdk'
 import { FitFileData } from './types'
 
 export const parseFitFile = async (fileData: FitFileData): Promise<FitFileData> => {
   return new Promise((resolve) => {
-    const fitParser = new FitParser({
-      force: true,
-      speedUnit: 'km/h',
-      lengthUnit: 'km',
-      temperatureUnit: 'celsius',
-      elapsedRecordField: true,
-      mode: 'both'
-    })
-
     const reader = new FileReader()
 
     reader.onload = (e) => {
       try {
         const arrayBuffer = e.target?.result as ArrayBuffer
-        const buffer = Buffer.from(arrayBuffer)
+        const stream = Stream.fromArrayBuffer(arrayBuffer)
+        const decoder = new Decoder(stream)
         
-        fitParser.parse(buffer, (error: any, data: any) => {
-          if (error) {
-            resolve({
-              ...fileData,
-              status: 'error',
-              error: error.message || 'Failed to parse FIT file'
-            })
-          } else {
-            const metadata = extractMetadata(data)
-            resolve({
-              ...fileData,
-              status: 'parsed',
-              parsed: data,
-              metadata
-            })
-          }
+        if (!decoder.isFIT()) {
+          resolve({
+            ...fileData,
+            status: 'error',
+            error: 'Not a valid FIT file'
+          })
+          return
+        }
+
+        if (!decoder.checkIntegrity()) {
+          resolve({
+            ...fileData,
+            status: 'error',
+            error: 'FIT file integrity check failed'
+          })
+          return
+        }
+
+        const { messages, errors } = decoder.read()
+        
+        if (errors && errors.length > 0) {
+          console.warn('FIT file parsing warnings:', errors)
+        }
+
+        const metadata = extractMetadata(messages)
+        
+        resolve({
+          ...fileData,
+          status: 'parsed',
+          parsed: { messages, rawBuffer: arrayBuffer },
+          metadata
         })
       } catch (error) {
         resolve({
           ...fileData,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Failed to read file'
+          error: error instanceof Error ? error.message : 'Failed to parse FIT file'
         })
       }
     }
@@ -58,74 +64,65 @@ export const parseFitFile = async (fileData: FitFileData): Promise<FitFileData> 
   })
 }
 
-const extractMetadata = (data: any) => {
+const extractMetadata = (messages: any) => {
   const metadata: FitFileData['metadata'] = {}
 
-  if (data.activity) {
-    metadata.activityType = data.activity.event || 'Unknown'
-  }
+  const sessionMsgs = messages.sessionMesgs || []
+  const recordMsgs = messages.recordMesgs || []
+  const activityMsgs = messages.activityMesgs || []
 
-  if (data.sessions && data.sessions.length > 0) {
-    const session = data.sessions[0]
-    metadata.duration = session.total_elapsed_time
-    metadata.distance = session.total_distance
-    metadata.sport = session.sport
+  if (sessionMsgs.length > 0) {
+    const session = sessionMsgs[0]
     
-    if (session.start_time) {
-      metadata.startTime = new Date(session.start_time)
+    if (session.totalElapsedTime !== undefined) {
+      metadata.duration = session.totalElapsedTime
     }
     
-    if (session.total_ascent !== undefined && session.total_ascent !== null) {
-      metadata.totalAscent = session.total_ascent
-    } else if (session.total_climb !== undefined && session.total_climb !== null) {
-      metadata.totalAscent = session.total_climb
-    } else if (session.enhanced_avg_altitude !== undefined || session.avg_altitude !== undefined) {
-      let ascent = 0
-      if (data.records && data.records.length > 1) {
-        for (let i = 1; i < data.records.length; i++) {
-          const prevAlt = data.records[i - 1].enhanced_altitude ?? data.records[i - 1].altitude
-          const currAlt = data.records[i].enhanced_altitude ?? data.records[i].altitude
-          if (prevAlt !== undefined && currAlt !== undefined) {
-            const diff = currAlt - prevAlt
-            if (diff > 0.5) {
-              ascent += diff
-            }
-          }
-        }
-      }
-      if (ascent > 0) {
-        metadata.totalAscent = ascent
-      }
+    if (session.totalDistance !== undefined) {
+      metadata.distance = session.totalDistance / 1000
+    }
+    
+    if (session.sport !== undefined) {
+      metadata.sport = session.sport
+    }
+    
+    if (session.startTime !== undefined) {
+      metadata.startTime = new Date(session.startTime.getTime())
+    }
+    
+    if (session.totalAscent !== undefined && session.totalAscent !== null) {
+      metadata.totalAscent = session.totalAscent
     }
   }
 
-  if (data.records && data.records.length > 0) {
-    const firstRecord = data.records[0]
-    const lastRecord = data.records[data.records.length - 1]
-    
-    if (firstRecord.timestamp && !metadata.startTime) {
-      metadata.startTime = new Date(firstRecord.timestamp)
+  if (recordMsgs.length > 0 && !metadata.startTime) {
+    const firstRecord = recordMsgs[0]
+    if (firstRecord.timestamp !== undefined) {
+      metadata.startTime = new Date(firstRecord.timestamp.getTime())
     }
-    
-    if (!metadata.distance && lastRecord.distance !== undefined) {
-      metadata.distance = lastRecord.distance
+  }
+
+  if (!metadata.distance && recordMsgs.length > 0) {
+    const lastRecord = recordMsgs[recordMsgs.length - 1]
+    if (lastRecord.distance !== undefined) {
+      metadata.distance = lastRecord.distance / 1000
     }
-    
-    if (metadata.totalAscent === undefined) {
-      let ascent = 0
-      for (let i = 1; i < data.records.length; i++) {
-        const prevAlt = data.records[i - 1].enhanced_altitude ?? data.records[i - 1].altitude
-        const currAlt = data.records[i].enhanced_altitude ?? data.records[i].altitude
-        if (prevAlt !== undefined && currAlt !== undefined) {
-          const diff = currAlt - prevAlt
-          if (diff > 0.5) {
-            ascent += diff
-          }
+  }
+
+  if (metadata.totalAscent === undefined && recordMsgs.length > 1) {
+    let ascent = 0
+    for (let i = 1; i < recordMsgs.length; i++) {
+      const prevAlt = recordMsgs[i - 1].enhancedAltitude ?? recordMsgs[i - 1].altitude
+      const currAlt = recordMsgs[i].enhancedAltitude ?? recordMsgs[i].altitude
+      if (prevAlt !== undefined && currAlt !== undefined && prevAlt !== null && currAlt !== null) {
+        const diff = currAlt - prevAlt
+        if (diff > 0.5) {
+          ascent += diff
         }
       }
-      if (ascent > 0) {
-        metadata.totalAscent = ascent
-      }
+    }
+    if (ascent > 0) {
+      metadata.totalAscent = ascent
     }
   }
 

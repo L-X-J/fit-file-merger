@@ -35,13 +35,13 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
     const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
 
     files.forEach((file, index) => {
-      if (file.status === 'parsed' && file.parsed?.records) {
+      if (file.status === 'parsed' && file.parsed?.messages?.recordMesgs) {
         const coords: L.LatLngTuple[] = []
         
-        file.parsed.records.forEach((record: any) => {
-          if (record.position_lat !== undefined && record.position_long !== undefined) {
-            const lat = record.position_lat
-            const lng = record.position_long
+        file.parsed.messages.recordMesgs.forEach((record: any) => {
+          if (record.positionLat !== undefined && record.positionLong !== undefined) {
+            const lat = record.positionLat
+            const lng = record.positionLong
             coords.push([lat, lng])
             allCoords.push([lat, lng])
           }
@@ -116,25 +116,25 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
         }
       }
 
-      if (file.parsed?.sessions?.[0]) {
-        const session = file.parsed.sessions[0]
-        totalMovingTime += session.total_timer_time || 0
-        if (session.max_speed) {
-          maxSpeed = Math.max(maxSpeed, session.max_speed)
+      if (file.parsed?.messages?.sessionMesgs?.[0]) {
+        const session = file.parsed.messages.sessionMesgs[0]
+        totalMovingTime += session.totalTimerTime || 0
+        if (session.maxSpeed) {
+          maxSpeed = Math.max(maxSpeed, session.maxSpeed)
         }
-        if (session.max_power) {
-          maxPower = Math.max(maxPower, session.max_power)
+        if (session.maxPower) {
+          maxPower = Math.max(maxPower, session.maxPower)
         }
-        if (session.avg_power) {
-          powerSum += session.avg_power * (session.total_timer_time || 0)
-          totalPowerReadings += session.total_timer_time || 0
+        if (session.avgPower) {
+          powerSum += session.avgPower * (session.totalTimerTime || 0)
+          totalPowerReadings += session.totalTimerTime || 0
         }
       }
 
-      if (file.parsed?.records) {
+      if (file.parsed?.messages?.recordMesgs) {
         const powers: number[] = []
         
-        file.parsed.records.forEach((record: any) => {
+        file.parsed.messages.recordMesgs.forEach((record: any) => {
           if (record.power !== undefined && record.power !== null && record.power > 0) {
             powers.push(record.power)
           }

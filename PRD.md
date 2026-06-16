@@ -1,14 +1,14 @@
 # FIT File Merger
 
-A browser-based tool for merging multiple FIT files from fitness devices (Garmin, Polar, Suunto) into a single file, with all processing done client-side for zero server costs and maximum privacy.
+A browser-based tool for merging multiple FIT files from fitness devices (Garmin, Polar, Suunto) into a single file, with all processing done client-side using the official Garmin FIT SDK for maximum accuracy, zero server costs and complete privacy.
 
 **Experience Qualities**:
 1. **Fluid and Intuitive** - Apple-inspired interactions with smooth animations and effortless flow from step to step
 2. **Refined and Minimal** - Clean, spacious design with subtle depth and purposeful use of color
-3. **Trustworthy** - All processing happens in the browser, no data leaves the user's device
+3. **Trustworthy** - All processing happens in the browser using official Garmin SDK, no data leaves the user's device
 
 **Complexity Level**: Light Application (multiple features with basic state)
-This is a focused tool with file upload, parsing, merging logic, and download capabilities presented in a 3-step guided workflow. It requires state management for uploaded files and merge configuration with smooth transitions between states.
+This is a focused tool with file upload, parsing, merging logic, and download capabilities presented in a 3-step guided workflow. It requires state management for uploaded files and merge configuration with smooth transitions between states. Uses official @garmin/fitsdk for accurate FIT file parsing and encoding.
 
 ## Essential Features
 

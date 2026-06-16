@@ -74,6 +74,29 @@ const extractMetadata = (data: any) => {
     if (session.start_time) {
       metadata.startTime = new Date(session.start_time)
     }
+    
+    if (session.total_ascent !== undefined && session.total_ascent !== null) {
+      metadata.totalAscent = session.total_ascent
+    } else if (session.total_climb !== undefined && session.total_climb !== null) {
+      metadata.totalAscent = session.total_climb
+    } else if (session.enhanced_avg_altitude !== undefined || session.avg_altitude !== undefined) {
+      let ascent = 0
+      if (data.records && data.records.length > 1) {
+        for (let i = 1; i < data.records.length; i++) {
+          const prevAlt = data.records[i - 1].enhanced_altitude ?? data.records[i - 1].altitude
+          const currAlt = data.records[i].enhanced_altitude ?? data.records[i].altitude
+          if (prevAlt !== undefined && currAlt !== undefined) {
+            const diff = currAlt - prevAlt
+            if (diff > 0.5) {
+              ascent += diff
+            }
+          }
+        }
+      }
+      if (ascent > 0) {
+        metadata.totalAscent = ascent
+      }
+    }
   }
 
   if (data.records && data.records.length > 0) {
@@ -88,19 +111,21 @@ const extractMetadata = (data: any) => {
       metadata.distance = lastRecord.distance
     }
     
-    let ascent = 0
-    for (let i = 1; i < data.records.length; i++) {
-      const prevAltitude = data.records[i - 1].altitude
-      const currAltitude = data.records[i].altitude
-      if (prevAltitude !== undefined && currAltitude !== undefined) {
-        const diff = currAltitude - prevAltitude
-        if (diff > 0.5) {
-          ascent += diff
+    if (metadata.totalAscent === undefined) {
+      let ascent = 0
+      for (let i = 1; i < data.records.length; i++) {
+        const prevAlt = data.records[i - 1].enhanced_altitude ?? data.records[i - 1].altitude
+        const currAlt = data.records[i].enhanced_altitude ?? data.records[i].altitude
+        if (prevAlt !== undefined && currAlt !== undefined) {
+          const diff = currAlt - prevAlt
+          if (diff > 0.5) {
+            ascent += diff
+          }
         }
       }
-    }
-    if (ascent > 0) {
-      metadata.totalAscent = ascent
+      if (ascent > 0) {
+        metadata.totalAscent = ascent
+      }
     }
   }
 

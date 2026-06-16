@@ -84,6 +84,7 @@ function App() {
       const mergedBlob = mergeFitFiles(validFiles, mergeOptions)
       setMergedData({ files: validFiles, blob: mergedBlob })
       toast.success(t.mergeSuccess)
+      setShowMap(true)
     } catch (error) {
       toast.error(t.mergeError, {
         description: error instanceof Error ? error.message : 'Unknown error occurred',

@@ -110,9 +110,11 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
       if (file.status === 'parsed' && file.metadata) {
         totalDistance += file.metadata.distance || 0
         totalTime += file.metadata.duration || 0
+        
+        if (file.metadata.totalAscent !== undefined && file.metadata.totalAscent !== null) {
+          totalElevation += file.metadata.totalAscent
+        }
       }
-
-      let fileElevationAdded = false
 
       if (file.parsed?.sessions?.[0]) {
         const session = file.parsed.sessions[0]
@@ -127,41 +129,9 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
           powerSum += session.avg_power * (session.total_timer_time || 0)
           totalPowerReadings += session.total_timer_time || 0
         }
-
-        if (session.total_ascent !== undefined && session.total_ascent !== null && session.total_ascent > 0) {
-          totalElevation += session.total_ascent
-          fileElevationAdded = true
-        }
       }
 
-      if (!fileElevationAdded && file.parsed?.records) {
-        const elevations: number[] = []
-        const powers: number[] = []
-        
-        file.parsed.records.forEach((record: any) => {
-          if (record.altitude !== undefined && record.altitude !== null) {
-            elevations.push(record.altitude)
-          }
-          if (record.power !== undefined && record.power !== null && record.power > 0) {
-            powers.push(record.power)
-          }
-        })
-
-        if (elevations.length > 1) {
-          let fileElevationGain = 0
-          for (let i = 1; i < elevations.length; i++) {
-            const diff = elevations[i] - elevations[i - 1]
-            if (diff > 0) {
-              fileElevationGain += diff
-            }
-          }
-          totalElevation += fileElevationGain
-        }
-
-        if (powers.length > 0 && maxPower === 0) {
-          maxPower = Math.max(...powers)
-        }
-      } else if (file.parsed?.records) {
+      if (file.parsed?.records) {
         const powers: number[] = []
         
         file.parsed.records.forEach((record: any) => {
@@ -170,8 +140,9 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
           }
         })
 
-        if (powers.length > 0 && maxPower === 0) {
-          maxPower = Math.max(...powers)
+        if (powers.length > 0) {
+          const filePower = Math.max(...powers)
+          maxPower = Math.max(maxPower, filePower)
         }
       }
     })

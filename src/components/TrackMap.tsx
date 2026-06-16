@@ -10,12 +10,13 @@ import type { Language } from '@/lib/i18n'
 
 interface TrackMapProps {
   files: FitFileData[]
-  onClose: () => void
+  onClose?: () => void
   lang: Language
   t: any
+  inline?: boolean
 }
 
-export const TrackMap = ({ files, onClose, lang, t }: TrackMapProps) => {
+export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapProps) => {
   const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -125,66 +126,84 @@ export const TrackMap = ({ files, onClose, lang, t }: TrackMapProps) => {
 
   const stats = calculateStats()
 
+  const mapContent = (
+    <>
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div ref={containerRef} className="flex-1 min-h-[300px] lg:min-h-[500px]" />
+
+        <div className="lg:w-80 p-4 border-t lg:border-t-0 lg:border-l space-y-4 overflow-y-auto">
+          <div>
+            <h3 className="font-semibold mb-3">{t.mergedTrack}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.totalDistance}</p>
+                <p className="text-lg font-semibold">{formatDistance(stats.totalDistance)}</p>
+              </div>
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.totalTime}</p>
+                <p className="text-lg font-semibold">{formatDuration(stats.totalTime)}</p>
+              </div>
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.movingTime}</p>
+                <p className="text-lg font-semibold">{formatDuration(stats.totalMovingTime)}</p>
+              </div>
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.avgSpeed}</p>
+                <p className="text-lg font-semibold">{stats.avgSpeed.toFixed(1)} km/h</p>
+              </div>
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.maxSpeed}</p>
+                <p className="text-lg font-semibold">{(stats.maxSpeed * 3.6).toFixed(1)} km/h</p>
+              </div>
+              <div className="p-3 bg-muted rounded">
+                <p className="text-xs text-muted-foreground">{t.elevation}</p>
+                <p className="text-lg font-semibold">{stats.totalElevation.toFixed(0)} m</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-2">{t.uploadedFiles} ({files.length})</h3>
+            <div className="space-y-2">
+              {files.map((file, index) => (
+                <div key={file.id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][index % 6] }}
+                  />
+                  <span className="flex-1 truncate">{file.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+
+  if (inline) {
+    return (
+      <Card className="w-full flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="text-lg font-semibold">{t.mapView}</h3>
+        </div>
+        {mapContent}
+      </Card>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <Card className="w-full max-w-6xl h-[80vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-xl font-semibold">{t.mapView}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X size={20} />
-          </Button>
+          {onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X size={20} />
+            </Button>
+          )}
         </div>
-
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          <div ref={containerRef} className="flex-1 min-h-[300px]" />
-
-          <div className="lg:w-80 p-4 border-t lg:border-t-0 lg:border-l space-y-4 overflow-y-auto">
-            <div>
-              <h3 className="font-semibold mb-3">{t.mergeOptions}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.totalDistance}</p>
-                  <p className="text-lg font-semibold">{formatDistance(stats.totalDistance)}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.totalTime}</p>
-                  <p className="text-lg font-semibold">{formatDuration(stats.totalTime)}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.movingTime}</p>
-                  <p className="text-lg font-semibold">{formatDuration(stats.totalMovingTime)}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.avgSpeed}</p>
-                  <p className="text-lg font-semibold">{stats.avgSpeed.toFixed(1)} km/h</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.maxSpeed}</p>
-                  <p className="text-lg font-semibold">{(stats.maxSpeed * 3.6).toFixed(1)} km/h</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{t.elevation}</p>
-                  <p className="text-lg font-semibold">{stats.totalElevation.toFixed(0)} m</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-2">{t.uploadedFiles} ({files.length})</h3>
-              <div className="space-y-2">
-                {files.map((file, index) => (
-                  <div key={file.id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][index % 6] }}
-                    />
-                    <span className="flex-1 truncate">{file.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        {mapContent}
       </Card>
     </div>
   )

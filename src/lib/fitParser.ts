@@ -70,9 +70,15 @@ const extractMetadata = (data: any) => {
     metadata.duration = session.total_elapsed_time
     metadata.distance = session.total_distance
     metadata.sport = session.sport
-    if (session.total_ascent !== undefined) {
+    
+    if (session.total_ascent !== undefined && session.total_ascent !== null) {
       metadata.totalAscent = session.total_ascent
+    } else if (session.ascent !== undefined && session.ascent !== null) {
+      metadata.totalAscent = session.ascent
+    } else if (session.total_climb !== undefined && session.total_climb !== null) {
+      metadata.totalAscent = session.total_climb
     }
+    
     if (session.start_time) {
       metadata.startTime = new Date(session.start_time)
     }
@@ -90,14 +96,14 @@ const extractMetadata = (data: any) => {
       metadata.distance = lastRecord.distance
     }
     
-    if (metadata.totalAscent === undefined) {
+    if (metadata.totalAscent === undefined || metadata.totalAscent === 0) {
       let ascent = 0
       for (let i = 1; i < data.records.length; i++) {
         const prevAltitude = data.records[i - 1].altitude
         const currAltitude = data.records[i].altitude
         if (prevAltitude !== undefined && currAltitude !== undefined) {
           const diff = currAltitude - prevAltitude
-          if (diff > 0) {
+          if (diff > 0.5) {
             ascent += diff
           }
         }

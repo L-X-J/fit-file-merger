@@ -63,6 +63,15 @@ function App() {
         toast.success(`${parsed.name} ${t.parseSuccess}`)
       }
     }
+
+    if (currentStep === 1) {
+      const allParsedFiles = await Promise.all(
+        fileDataArray.map(() => new Promise(resolve => setTimeout(resolve, 100)))
+      )
+      setTimeout(() => {
+        setCurrentStep(2)
+      }, 300)
+    }
   }
 
   const handleRemoveFile = (id: string) => {
@@ -216,7 +225,7 @@ function App() {
                   onRemoveFile={handleRemoveFile}
                   mergeOptions={mergeOptions}
                   onOptionsChange={setMergeOptions}
-                  onBack={() => setCurrentStep(1)}
+                  onBack={handleStartOver}
                   onMerge={handleMerge}
                   canProceed={canProceedToStep3}
                   isMerging={isMerging}
@@ -252,21 +261,6 @@ function Step1({ files, onFilesSelected, onRemoveFile, onNext, canProceed, isMer
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-md mx-auto"
       >
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl mb-6"
-          >
-            <ArrowRight size={40} weight="bold" className="text-primary" />
-          </motion.div>
-          <h3 className="text-2xl font-semibold mb-2">{lang === 'zh' ? '开始合并' : 'Get Started'}</h3>
-          <p className="text-sm text-muted-foreground">
-            {lang === 'zh' ? '选择至少两个 FIT 文件开始合并' : 'Select at least two FIT files to begin'}
-          </p>
-        </div>
-        
         <FileUploadZone 
           onFilesSelected={onFilesSelected} 
           disabled={isMerging}
@@ -354,6 +348,10 @@ function Step1({ files, onFilesSelected, onRemoveFile, onNext, canProceed, isMer
 }
 
 function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onMerge, canProceed, isMerging, lang, t, onFilesSelected }: any) {
+  const handleBackToHome = () => {
+    onBack()
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -396,7 +394,7 @@ function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onM
         <Button
           size="lg"
           variant="outline"
-          onClick={onBack}
+          onClick={handleBackToHome}
           className="px-8 rounded-full"
         >
           {t.back}

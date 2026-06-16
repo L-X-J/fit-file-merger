@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { UploadSimple } from '@phosphor-icons/react'
+import { UploadSimple, ArrowRight } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Language } from '@/lib/i18n'
@@ -83,19 +83,17 @@ export const FileUploadZone = ({ onFilesSelected, disabled, lang, t }: FileUploa
     >
       <div className="flex flex-col items-center gap-5">
         <motion.div 
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center"
-          animate={isDragging ? { scale: [1, 1.1, 1] } : {}}
-          transition={{ duration: 0.5, repeat: isDragging ? Infinity : 0 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl"
         >
-          <UploadSimple size={36} className="text-primary" weight="duotone" />
+          <ArrowRight size={40} weight="bold" className="text-primary" />
         </motion.div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold">{t.uploadTitle}</h3>
+          <h3 className="text-2xl font-semibold">{lang === 'zh' ? '开始合并' : 'Get Started'}</h3>
           <p className="text-sm text-muted-foreground">
-            {t.uploadDescription}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t.uploadSupport}
+            {lang === 'zh' ? '选择至少两个 FIT 文件开始合并' : 'Select at least two FIT files to begin'}
           </p>
         </div>
         <Button 

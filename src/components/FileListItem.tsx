@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Trash, Clock, MapPin, CheckCircle, Warning, CircleNotch } from '@phosphor-icons/react'
+import { Trash, Clock, MapPin, CheckCircle, Warning, CircleNotch, TrendUp } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FitFileData } from '@/lib/types'
-import { formatDuration, formatDistance, formatDate } from '@/lib/fitParser'
+import { formatDuration, formatDistance, formatDate, formatElevation } from '@/lib/fitParser'
 import type { Language } from '@/lib/i18n'
 
 interface FileListItemProps {
@@ -172,11 +172,22 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
                     </div>
                   </div>
                 )}
-                {fileData.metadata.distance !== undefined && (
+                {(fileData.metadata.distance !== undefined || fileData.metadata.totalAscent !== undefined) && (
                   <div className="col-span-2">
-                    <div className="flex items-center gap-2 p-3 bg-card/90 backdrop-blur-sm rounded-lg border border-border/50">
-                      <div className="text-xs text-muted-foreground">{t.distance}:</div>
-                      <div className="font-semibold text-lg text-primary">{formatDistance(fileData.metadata.distance)}</div>
+                    <div className="flex items-center gap-3 p-3 bg-card/90 backdrop-blur-sm rounded-lg border border-border/50">
+                      {fileData.metadata.distance !== undefined && (
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="text-xs text-muted-foreground">{t.distance}:</div>
+                          <div className="font-semibold text-lg text-primary">{formatDistance(fileData.metadata.distance)}</div>
+                        </div>
+                      )}
+                      {fileData.metadata.totalAscent !== undefined && (
+                        <div className="flex items-center gap-2 flex-1">
+                          <TrendUp size={16} className="text-muted-foreground" weight="duotone" />
+                          <div className="text-xs text-muted-foreground">{t.elevation}:</div>
+                          <div className="font-semibold text-base">{formatElevation(fileData.metadata.totalAscent)}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

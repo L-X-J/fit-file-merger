@@ -9,6 +9,7 @@ export interface FitFileData {
     startTime?: Date
     distance?: number
     sport?: string
+    totalAscent?: number
   }
   error?: string
   status: 'pending' | 'parsing' | 'parsed' | 'error'

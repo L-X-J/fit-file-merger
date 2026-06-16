@@ -70,6 +70,9 @@ const extractMetadata = (data: any) => {
     metadata.duration = session.total_elapsed_time
     metadata.distance = session.total_distance
     metadata.sport = session.sport
+    if (session.total_ascent !== undefined) {
+      metadata.totalAscent = session.total_ascent
+    }
     if (session.start_time) {
       metadata.startTime = new Date(session.start_time)
     }
@@ -85,6 +88,23 @@ const extractMetadata = (data: any) => {
     
     if (!metadata.distance && lastRecord.distance !== undefined) {
       metadata.distance = lastRecord.distance
+    }
+    
+    if (metadata.totalAscent === undefined) {
+      let ascent = 0
+      for (let i = 1; i < data.records.length; i++) {
+        const prevAltitude = data.records[i - 1].altitude
+        const currAltitude = data.records[i].altitude
+        if (prevAltitude !== undefined && currAltitude !== undefined) {
+          const diff = currAltitude - prevAltitude
+          if (diff > 0) {
+            ascent += diff
+          }
+        }
+      }
+      if (ascent > 0) {
+        metadata.totalAscent = ascent
+      }
     }
   }
 
@@ -117,4 +137,9 @@ export const formatDate = (date?: Date, lang: string = 'en'): string => {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date)
+}
+
+export const formatElevation = (metersAscent?: number): string => {
+  if (!metersAscent) return 'N/A'
+  return `${Math.round(metersAscent)} m`
 }

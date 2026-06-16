@@ -44,15 +44,14 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
     const minLng = Math.min(...lngs)
     const maxLng = Math.max(...lngs)
 
-    const padding = 10
+    const padding = 20
     const width = canvas.width - padding * 2
     const height = canvas.height - padding * 2
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
-    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#3b82f6'
-    ctx.strokeStyle = primaryColor
-    ctx.lineWidth = 3
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)'
+    ctx.lineWidth = 2
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
@@ -71,20 +70,16 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
 
     const startX = padding + ((coords[0][1] - minLng) / (maxLng - minLng || 1)) * width
     const startY = padding + height - ((coords[0][0] - minLat) / (maxLat - minLat || 1)) * height
-    ctx.fillStyle = '#10b981'
-    ctx.shadowColor = '#10b981'
-    ctx.shadowBlur = 8
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.7)'
     ctx.beginPath()
-    ctx.arc(startX, startY, 5, 0, 2 * Math.PI)
+    ctx.arc(startX, startY, 4, 0, 2 * Math.PI)
     ctx.fill()
 
     const endX = padding + ((coords[coords.length - 1][1] - minLng) / (maxLng - minLng || 1)) * width
     const endY = padding + height - ((coords[coords.length - 1][0] - minLat) / (maxLat - minLat || 1)) * height
-    ctx.fillStyle = '#ef4444'
-    ctx.shadowColor = '#ef4444'
-    ctx.shadowBlur = 8
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.7)'
     ctx.beginPath()
-    ctx.arc(endX, endY, 5, 0, 2 * Math.PI)
+    ctx.arc(endX, endY, 4, 0, 2 * Math.PI)
     ctx.fill()
   }, [showTrack, fileData])
 
@@ -126,8 +121,17 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
       transition={{ duration: 0.3 }}
       whileHover={{ y: -2 }}
     >
-      <Card className="p-5 border-2 hover:border-primary/30 hover:shadow-lg transition-all duration-300">
-        <div className="flex items-start gap-4">
+      <Card className="relative p-5 border hover:border-primary/30 hover:shadow-lg transition-all duration-300 overflow-hidden">
+        {showTrack && fileData.status === 'parsed' && fileData.parsed?.records && (
+          <canvas 
+            ref={canvasRef} 
+            width={600} 
+            height={180} 
+            className="absolute inset-0 w-full h-full opacity-100 pointer-events-none"
+          />
+        )}
+        
+        <div className="relative z-10 flex items-start gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="flex-1 min-w-0">
@@ -143,21 +147,6 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
                 <Trash size={18} weight="duotone" />
               </Button>
             </div>
-
-            {showTrack && fileData.status === 'parsed' && fileData.parsed?.records && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mb-4"
-              >
-                <canvas 
-                  ref={canvasRef} 
-                  width={400} 
-                  height={120} 
-                  className="w-full h-auto bg-gradient-to-br from-muted/30 to-muted/10 rounded-lg border-2 border-border"
-                />
-              </motion.div>
-            )}
 
             {fileData.status === 'parsed' && fileData.metadata && (
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -185,7 +174,7 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
                 )}
                 {fileData.metadata.distance !== undefined && (
                   <div className="col-span-2">
-                    <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 bg-card/90 backdrop-blur-sm rounded-lg border border-border/50">
                       <div className="text-xs text-muted-foreground">{t.distance}:</div>
                       <div className="font-semibold text-lg text-primary">{formatDistance(fileData.metadata.distance)}</div>
                     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Toaster, toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, DownloadSimple, Globe, ArrowClockwise, CheckCircle } from '@phosphor-icons/react'
@@ -445,26 +445,60 @@ function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onM
 }
 
 function Step3({ mergedData, onDownload, onStartOver, lang, t, validFileCount }: any) {
+  const [showSuccess, setShowSuccess] = useState(true)
+  const [progress, setProgress] = useState(100)
+
+  useEffect(() => {
+    const duration = 2000
+    const startTime = Date.now()
+    
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
+      setProgress(remaining)
+      
+      if (elapsed >= duration) {
+        setShowSuccess(false)
+        clearInterval(timer)
+      }
+    }, 16)
+
+    return () => clearInterval(timer)
+  }, [])
+
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 text-center border border-primary/20"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4"
-        >
-          <CheckCircle size={32} weight="fill" className="text-primary-foreground" />
-        </motion.div>
-        <h3 className="text-xl font-semibold mb-2">{t.mergeSuccess}</h3>
-        <p className="text-sm text-muted-foreground">
-          {validFileCount} {lang === 'zh' ? '个文件已成功合并' : 'files successfully merged'}
-        </p>
-      </motion.div>
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 text-center border border-primary/20 overflow-hidden relative"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4"
+            >
+              <CheckCircle size={32} weight="fill" className="text-primary-foreground" />
+            </motion.div>
+            <h3 className="text-xl font-semibold mb-2">{t.mergeSuccess}</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {validFileCount} {lang === 'zh' ? '个文件已成功合并' : 'files successfully merged'}
+            </p>
+            <div className="w-full h-1 bg-primary/20 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-primary"
+                style={{ width: `${progress}%` }}
+                transition={{ duration: 0.1 }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <TrackMap
         files={mergedData.files}

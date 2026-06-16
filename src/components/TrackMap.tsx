@@ -102,6 +102,9 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
     let totalMovingTime = 0
     let maxSpeed = 0
     let totalElevation = 0
+    let maxPower = 0
+    let totalPowerReadings = 0
+    let powerSum = 0
 
     files.forEach(file => {
       if (file.status === 'parsed' && file.metadata) {
@@ -115,13 +118,64 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
         if (session.max_speed) {
           maxSpeed = Math.max(maxSpeed, session.max_speed)
         }
-        totalElevation += session.total_ascent || 0
+        if (session.total_ascent !== undefined && session.total_ascent !== null) {
+          totalElevation += session.total_ascent
+        }
+        if (session.max_power) {
+          maxPower = Math.max(maxPower, session.max_power)
+        }
+        if (session.avg_power) {
+          powerSum += session.avg_power * (session.total_timer_time || 0)
+          totalPowerReadings += session.total_timer_time || 0
+        }
+      }
+
+      if (file.parsed?.records) {
+        const elevations: number[] = []
+        const powers: number[] = []
+        
+        file.parsed.records.forEach((record: any) => {
+          if (record.altitude !== undefined && record.altitude !== null) {
+            elevations.push(record.altitude)
+          }
+          if (record.power !== undefined && record.power !== null && record.power > 0) {
+            powers.push(record.power)
+          }
+        })
+
+        if (elevations.length > 1) {
+          let fileElevationGain = 0
+          for (let i = 1; i < elevations.length; i++) {
+            const diff = elevations[i] - elevations[i - 1]
+            if (diff > 0) {
+              fileElevationGain += diff
+            }
+          }
+          
+          if (fileElevationGain > 0) {
+            totalElevation = (totalElevation === 0 ? 0 : totalElevation) + fileElevationGain
+          }
+        }
+
+        if (powers.length > 0 && maxPower === 0) {
+          maxPower = Math.max(...powers)
+        }
       }
     })
 
     const avgSpeed = totalMovingTime > 0 ? (totalDistance / (totalMovingTime / 3600)) : 0
+    const avgPower = totalPowerReadings > 0 ? powerSum / totalPowerReadings : 0
 
-    return { totalDistance, totalTime, totalMovingTime, avgSpeed, maxSpeed, totalElevation }
+    return { 
+      totalDistance, 
+      totalTime, 
+      totalMovingTime, 
+      avgSpeed, 
+      maxSpeed, 
+      totalElevation,
+      avgPower,
+      maxPower 
+    }
   }
 
   const stats = calculateStats()
@@ -159,6 +213,18 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
                 <p className="text-xs text-muted-foreground">{t.elevation}</p>
                 <p className="text-lg font-semibold">{stats.totalElevation.toFixed(0)} m</p>
               </div>
+              {stats.avgPower > 0 && (
+                <div className="p-3 bg-muted rounded">
+                  <p className="text-xs text-muted-foreground">{lang === 'zh' ? '平均功率' : 'Avg Power'}</p>
+                  <p className="text-lg font-semibold">{stats.avgPower.toFixed(0)} W</p>
+                </div>
+              )}
+              {stats.maxPower > 0 && (
+                <div className="p-3 bg-muted rounded">
+                  <p className="text-xs text-muted-foreground">{lang === 'zh' ? '最大功率' : 'Max Power'}</p>
+                  <p className="text-lg font-semibold">{stats.maxPower.toFixed(0)} W</p>
+                </div>
+              )}
             </div>
           </div>
 

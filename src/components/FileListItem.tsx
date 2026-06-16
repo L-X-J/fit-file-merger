@@ -20,7 +20,7 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    if (!showTrack || !canvasRef.current || fileData.status !== 'parsed' || !fileData.parsed?.records) {
+    if (!showTrack || !canvasRef.current || fileData.status !== 'parsed' || !fileData.parsed?.messages?.recordMesgs) {
       return
     }
 
@@ -29,9 +29,9 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
     if (!ctx) return
 
     const coords: [number, number][] = []
-    fileData.parsed.records.forEach((record: any) => {
-      if (record.position_lat !== undefined && record.position_long !== undefined) {
-        coords.push([record.position_lat, record.position_long])
+    fileData.parsed.messages.recordMesgs.forEach((record: any) => {
+      if (record.positionLat !== undefined && record.positionLong !== undefined) {
+        coords.push([record.positionLat, record.positionLong])
       }
     })
 

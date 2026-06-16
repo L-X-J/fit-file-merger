@@ -112,6 +112,8 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
         totalTime += file.metadata.duration || 0
       }
 
+      let fileElevationAdded = false
+
       if (file.parsed?.sessions?.[0]) {
         const session = file.parsed.sessions[0]
         totalMovingTime += session.total_timer_time || 0
@@ -125,9 +127,14 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
           powerSum += session.avg_power * (session.total_timer_time || 0)
           totalPowerReadings += session.total_timer_time || 0
         }
+
+        if (session.total_ascent !== undefined && session.total_ascent !== null && session.total_ascent > 0) {
+          totalElevation += session.total_ascent
+          fileElevationAdded = true
+        }
       }
 
-      if (file.parsed?.records) {
+      if (!fileElevationAdded && file.parsed?.records) {
         const elevations: number[] = []
         const powers: number[] = []
         
@@ -150,6 +157,18 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
           }
           totalElevation += fileElevationGain
         }
+
+        if (powers.length > 0 && maxPower === 0) {
+          maxPower = Math.max(...powers)
+        }
+      } else if (file.parsed?.records) {
+        const powers: number[] = []
+        
+        file.parsed.records.forEach((record: any) => {
+          if (record.power !== undefined && record.power !== null && record.power > 0) {
+            powers.push(record.power)
+          }
+        })
 
         if (powers.length > 0 && maxPower === 0) {
           maxPower = Math.max(...powers)

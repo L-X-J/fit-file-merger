@@ -5,7 +5,7 @@ import { ArrowRight, DownloadSimple, Globe, ArrowClockwise, CheckCircle } from '
 import { Button } from '@/components/ui/button'
 import { FileUploadZone } from '@/components/FileUploadZone'
 import { FileListItem } from '@/components/FileListItem'
-import { MergeOptionsCard } from '@/components/MergeOptionsCard'
+import { MergeOptionsDialog } from '@/components/MergeOptionsDialog'
 import { TrackMap } from '@/components/TrackMap'
 import { FitFileData, MergeOptions } from '@/lib/types'
 import { parseFitFile } from '@/lib/fitParser'
@@ -356,9 +356,17 @@ function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onM
     <div className="space-y-6">
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold">
-            {t.uploadedFiles} <span className="text-muted-foreground">({files.length})</span>
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-base font-semibold">
+              {t.uploadedFiles} <span className="text-muted-foreground">({files.length})</span>
+            </h3>
+            <MergeOptionsDialog
+              options={mergeOptions}
+              onOptionsChange={onOptionsChange}
+              lang={lang}
+              t={t}
+            />
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -382,13 +390,6 @@ function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onM
           ))}
         </div>
       </div>
-
-      <MergeOptionsCard
-        options={mergeOptions}
-        onOptionsChange={onOptionsChange}
-        lang={lang}
-        t={t}
-      />
 
       <div className="flex justify-center gap-3 pt-6">
         <Button

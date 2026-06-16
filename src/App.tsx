@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { Toaster, toast } from 'sonner'
-import { ArrowRight, ArrowLeft, DownloadSimple, FilePlus, Globe, ArrowClockwise } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight, DownloadSimple, Globe, ArrowClockwise, CheckCircle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { FileUploadZone } from '@/components/FileUploadZone'
 import { FileListItem } from '@/components/FileListItem'
 import { MergeOptionsCard } from '@/components/MergeOptionsCard'
@@ -116,133 +114,217 @@ function App() {
   const canProceedToStep2 = validFileCount >= 2
   const canProceedToStep3 = canProceedToStep2
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {[1, 2, 3].map((step) => {
-        const isActive = currentStep === step
-        const isCompleted = currentStep > step
-        
-        return (
-          <div key={step} className="flex items-center">
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground scale-110'
-                    : isCompleted
-                    ? 'bg-accent text-accent-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {step}
-              </div>
-              <div className="text-center">
-                <p className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {step === 1 && t.step1Title}
-                  {step === 2 && t.step2Title}
-                  {step === 3 && t.step3Title}
-                </p>
-              </div>
+  return (
+    <div className="min-h-screen bg-background">
+      <Toaster position="top-center" />
+      
+      <nav className="fixed top-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-b border-border z-50">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold tracking-tight">{t.title}</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleLanguage}
+            className="flex items-center gap-2"
+          >
+            <Globe size={18} weight="duotone" />
+            {lang === 'en' ? '中文' : 'English'}
+          </Button>
+        </div>
+      </nav>
+
+      <div className="pt-20 pb-8">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-semibold mb-3 tracking-tight">{t.subtitle}</h2>
+            <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
+              {t.privacyNote}
+            </p>
+          </motion.div>
+
+          <div className="flex items-center justify-center mb-12">
+            <div className="flex items-center gap-3">
+              {[1, 2, 3].map((step, index) => {
+                const isActive = currentStep === step
+                const isCompleted = currentStep > step
+                const stepLabel = step === 1 ? t.step1Title : step === 2 ? t.step2Title : t.step3Title
+                
+                return (
+                  <div key={step} className="flex items-center">
+                    <motion.div 
+                      className="flex flex-col items-center gap-2"
+                      initial={false}
+                      animate={{ scale: isActive ? 1 : 0.95 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div
+                        className={`relative w-9 h-9 rounded-full flex items-center justify-center font-medium text-sm transition-all duration-300 ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                            : isCompleted
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-secondary text-muted-foreground'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle size={20} weight="fill" className="text-primary" />
+                        ) : (
+                          step
+                        )}
+                      </div>
+                      <p className={`text-xs font-medium whitespace-nowrap ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {stepLabel}
+                      </p>
+                    </motion.div>
+                    {index < 2 && (
+                      <div className={`w-16 h-0.5 mx-3 mb-7 rounded-full transition-colors duration-300 ${isCompleted ? 'bg-primary/30' : 'bg-border'}`} />
+                    )}
+                  </div>
+                )
+              })}
             </div>
-            {step < 3 && (
-              <div className={`w-12 h-0.5 mx-2 mb-6 ${isCompleted ? 'bg-accent' : 'bg-muted'}`} />
-            )}
           </div>
-        )
-      })}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {currentStep === 1 && (
+                <Step1
+                  files={files}
+                  onFilesSelected={handleFilesSelected}
+                  onRemoveFile={handleRemoveFile}
+                  onNext={() => setCurrentStep(2)}
+                  canProceed={canProceedToStep2}
+                  isMerging={isMerging}
+                  lang={currentLang}
+                  t={t}
+                />
+              )}
+              
+              {currentStep === 2 && (
+                <Step2
+                  files={files}
+                  onRemoveFile={handleRemoveFile}
+                  mergeOptions={mergeOptions}
+                  onOptionsChange={setMergeOptions}
+                  onBack={() => setCurrentStep(1)}
+                  onMerge={handleMerge}
+                  canProceed={canProceedToStep3}
+                  isMerging={isMerging}
+                  lang={currentLang}
+                  t={t}
+                />
+              )}
+              
+              {currentStep === 3 && mergedData && (
+                <Step3
+                  mergedData={mergedData}
+                  onDownload={handleDownload}
+                  onStartOver={handleStartOver}
+                  lang={currentLang}
+                  t={t}
+                  validFileCount={validFileCount}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   )
+}
 
-  const renderStep1 = () => (
+function Step1({ files, onFilesSelected, onRemoveFile, onNext, canProceed, isMerging, lang, t }: any) {
+  return (
     <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">{t.step1Title}</h2>
-        <p className="text-muted-foreground">{t.step1Description}</p>
-      </div>
-
       <FileUploadZone 
-        onFilesSelected={handleFilesSelected} 
+        onFilesSelected={onFilesSelected} 
         disabled={isMerging}
-        lang={currentLang}
+        lang={lang}
         t={t}
       />
 
       {files.length > 0 && (
-        <>
-          <Separator />
-          
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">
-                {t.uploadedFiles} ({files.length})
-              </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => document.querySelector('input[type="file"]')?.dispatchEvent(new MouseEvent('click'))}
-                disabled={isMerging}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold">
+              {t.uploadedFiles} <span className="text-muted-foreground">({files.length})</span>
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {files.map((file: FitFileData, index: number) => (
+              <motion.div
+                key={file.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
               >
-                <FilePlus className="mr-2" />
-                {t.addMore}
-              </Button>
-            </div>
-
-            {files.length > 0 && validFileCount < 2 && (
-              <Alert className="mb-4">
-                <AlertDescription>
-                  {t.uploadWarning}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="space-y-3">
-              {files.map((file) => (
                 <FileListItem
-                  key={file.id}
                   fileData={file}
-                  onRemove={() => handleRemoveFile(file.id)}
-                  lang={currentLang}
+                  onRemove={() => onRemoveFile(file.id)}
+                  lang={lang}
                   t={t}
                   showTrack={false}
                 />
-              ))}
-            </div>
+              </motion.div>
+            ))}
           </div>
 
-          <div className="flex justify-center pt-4">
+          {!canProceed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-4 text-sm text-muted-foreground"
+            >
+              {t.uploadWarning}
+            </motion.div>
+          )}
+
+          <div className="flex justify-center pt-6">
             <Button
               size="lg"
-              onClick={() => setCurrentStep(2)}
-              disabled={!canProceedToStep2}
-              className="px-8"
+              onClick={onNext}
+              disabled={!canProceed}
+              className="px-8 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             >
               {t.continueToPreview}
-              <ArrowRight className="ml-2" size={20} />
+              <ArrowRight className="ml-2" size={20} weight="bold" />
             </Button>
           </div>
-        </>
+        </motion.div>
       )}
     </div>
   )
+}
 
-  const renderStep2 = () => (
+function Step2({ files, onRemoveFile, mergeOptions, onOptionsChange, onBack, onMerge, canProceed, isMerging, lang, t }: any) {
+  return (
     <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">{t.step2Title}</h2>
-        <p className="text-muted-foreground">{t.step2Description}</p>
-      </div>
-
       <div>
-        <h3 className="text-lg font-semibold mb-4">
-          {t.uploadedFiles} ({files.length})
+        <h3 className="text-base font-semibold mb-4">
+          {t.uploadedFiles} <span className="text-muted-foreground">({files.length})</span>
         </h3>
         <div className="space-y-3">
-          {files.map((file) => (
+          {files.map((file: FitFileData) => (
             <FileListItem
               key={file.id}
               fileData={file}
-              onRemove={() => handleRemoveFile(file.id)}
-              lang={currentLang}
+              onRemove={() => onRemoveFile(file.id)}
+              lang={lang}
               t={t}
               showTrack={true}
             />
@@ -250,129 +332,99 @@ function App() {
         </div>
       </div>
 
-      <Separator />
-
       <MergeOptionsCard
         options={mergeOptions}
-        onOptionsChange={setMergeOptions}
-        lang={currentLang}
+        onOptionsChange={onOptionsChange}
+        lang={lang}
         t={t}
       />
 
-      <div className="flex justify-center gap-4 pt-4">
+      <div className="flex justify-center gap-3 pt-6">
         <Button
           size="lg"
           variant="outline"
-          onClick={() => setCurrentStep(1)}
-          className="px-8"
+          onClick={onBack}
+          className="px-8 rounded-full"
         >
-          <ArrowLeft className="mr-2" size={20} />
           {t.back}
         </Button>
         <Button
           size="lg"
-          onClick={handleMerge}
-          disabled={isMerging || !canProceedToStep3}
-          className="px-8"
+          onClick={onMerge}
+          disabled={isMerging || !canProceed}
+          className="px-8 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
         >
           {isMerging ? (
             <>
-              <span className="animate-spin mr-2">⏳</span>
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="inline-block mr-2"
+              >
+                ⏳
+              </motion.span>
               {t.merging}
             </>
           ) : (
             <>
               {t.continueToMerge}
-              <ArrowRight className="ml-2" size={20} />
+              <ArrowRight className="ml-2" size={20} weight="bold" />
             </>
           )}
         </Button>
       </div>
     </div>
   )
+}
 
-  const renderStep3 = () => {
-    if (!mergedData) return null
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold mb-2">{t.step3Title}</h2>
-          <p className="text-muted-foreground">{t.step3Description}</p>
-        </div>
-
-        <div className="bg-accent/10 border-2 border-accent rounded-lg p-6 text-center">
-          <Badge className="mb-4 bg-accent text-accent-foreground text-base px-4 py-2">
-            {t.mergeSuccess}
-          </Badge>
-          <p className="text-sm text-muted-foreground">
-            {validFileCount} {lang === 'zh' ? '个文件已成功合并' : 'files successfully merged'}
-          </p>
-        </div>
-
-        <TrackMap
-          files={mergedData.files}
-          onClose={() => {}}
-          lang={currentLang}
-          t={t}
-          inline={true}
-        />
-
-        <div className="flex justify-center gap-4 pt-4">
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={handleStartOver}
-            className="px-8"
-          >
-            <ArrowClockwise className="mr-2" size={20} />
-            {t.startOver}
-          </Button>
-          <Button
-            size="lg"
-            onClick={handleDownload}
-            className="px-8"
-          >
-            <DownloadSimple className="mr-2" size={20} />
-            {t.download}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
+function Step3({ mergedData, onDownload, onStartOver, lang, t, validFileCount }: any) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <Toaster />
-      <div className="container mx-auto px-6 py-8 max-w-5xl">
-        <header className="mb-8">
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <h1 className="text-4xl font-bold tracking-tight">{t.title}</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleLanguage}
-              className="flex items-center gap-2"
-            >
-              <Globe size={18} />
-              {lang === 'en' ? '中文' : 'English'}
-            </Button>
-          </div>
-          <p className="text-muted-foreground text-lg">
-            {t.subtitle}
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {t.privacyNote}
-          </p>
-        </header>
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 text-center border border-primary/20"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4"
+        >
+          <CheckCircle size={32} weight="fill" className="text-primary-foreground" />
+        </motion.div>
+        <h3 className="text-xl font-semibold mb-2">{t.mergeSuccess}</h3>
+        <p className="text-sm text-muted-foreground">
+          {validFileCount} {lang === 'zh' ? '个文件已成功合并' : 'files successfully merged'}
+        </p>
+      </motion.div>
 
-        {renderStepIndicator()}
+      <TrackMap
+        files={mergedData.files}
+        onClose={() => {}}
+        lang={lang}
+        t={t}
+        inline={true}
+      />
 
-        <div className="mt-8">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-        </div>
+      <div className="flex justify-center gap-3 pt-6">
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={onStartOver}
+          className="px-8 rounded-full"
+        >
+          <ArrowClockwise className="mr-2" size={20} />
+          {t.startOver}
+        </Button>
+        <Button
+          size="lg"
+          onClick={onDownload}
+          className="px-8 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
+        >
+          <DownloadSimple className="mr-2" size={20} weight="bold" />
+          {t.download}
+        </Button>
       </div>
     </div>
   )

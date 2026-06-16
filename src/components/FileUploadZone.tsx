@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { UploadSimple } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -66,33 +67,45 @@ export const FileUploadZone = ({ onFilesSelected, disabled, lang, t }: FileUploa
   }
 
   return (
-    <div
+    <motion.div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={handleClick}
+      whileHover={!disabled ? { scale: 1.01 } : undefined}
+      whileTap={!disabled ? { scale: 0.99 } : undefined}
       className={cn(
-        'border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all duration-200',
-        'hover:border-accent hover:bg-accent/5',
-        isDragging && 'drag-over',
+        'relative border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all duration-300',
+        'hover:border-primary/50 hover:bg-primary/5',
+        isDragging && 'border-primary bg-primary/10 scale-[1.01]',
         disabled && 'opacity-50 cursor-not-allowed'
       )}
     >
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <UploadSimple size={32} className="text-primary" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold mb-1">{t.uploadTitle}</h3>
+      <div className="flex flex-col items-center gap-5">
+        <motion.div 
+          className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center"
+          animate={isDragging ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.5, repeat: isDragging ? Infinity : 0 }}
+        >
+          <UploadSimple size={36} className="text-primary" weight="duotone" />
+        </motion.div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">{t.uploadTitle}</h3>
           <p className="text-sm text-muted-foreground">
             {t.uploadDescription}
           </p>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground">
             {t.uploadSupport}
           </p>
         </div>
-        <Button variant="outline" disabled={disabled} onClick={handleButtonClick}>
-          <UploadSimple className="mr-2" />
+        <Button 
+          variant="outline" 
+          size="lg"
+          disabled={disabled} 
+          onClick={handleButtonClick}
+          className="rounded-full mt-2"
+        >
+          <UploadSimple className="mr-2" weight="bold" />
           {t.selectFiles}
         </Button>
       </div>
@@ -104,6 +117,6 @@ export const FileUploadZone = ({ onFilesSelected, disabled, lang, t }: FileUploa
         className="hidden"
         onChange={handleFileInput}
       />
-    </div>
+    </motion.div>
   )
 }

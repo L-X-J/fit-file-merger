@@ -3,12 +3,12 @@
 A browser-based tool for merging multiple FIT files from fitness devices (Garmin, Polar, Suunto) into a single file, with all processing done client-side for zero server costs and maximum privacy.
 
 **Experience Qualities**:
-1. **Effortless** - Upload files, merge instantly, download the result without complexity
-2. **Trustworthy** - All processing happens in the browser, no data leaves the user's device
-3. **Professional** - Clean interface that respects the user's time and technical files
+1. **Fluid and Intuitive** - Apple-inspired interactions with smooth animations and effortless flow from step to step
+2. **Refined and Minimal** - Clean, spacious design with subtle depth and purposeful use of color
+3. **Trustworthy** - All processing happens in the browser, no data leaves the user's device
 
 **Complexity Level**: Light Application (multiple features with basic state)
-This is a focused tool with file upload, parsing, merging logic, and download capabilities. It requires state management for uploaded files and merge configuration but doesn't need multiple views or complex workflows.
+This is a focused tool with file upload, parsing, merging logic, and download capabilities presented in a 3-step guided workflow. It requires state management for uploaded files and merge configuration with smooth transitions between states.
 
 ## Essential Features
 
@@ -51,43 +51,47 @@ This is a focused tool with file upload, parsing, merging logic, and download ca
 
 ## Design Direction
 
-The design should evoke confidence and technical precision while remaining approachable. It should feel like a professional developer tool that respects the user's technical workflow - clean, efficient, and distraction-free. The interface should communicate data integrity and reliability through structured layouts and clear visual feedback.
+The design should evoke Apple's signature minimalism and attention to detail - clean, spacious, and refined. Every interaction should feel smooth and intentional with fluid animations and subtle depth. The interface should inspire confidence through its polish and simplicity, making technical file operations feel elegant and approachable.
 
 ## Color Selection
 
-A technical, focused palette with high contrast for clarity and data-oriented feel.
+An Apple-inspired palette with soft neutrals and a vibrant primary for a refined, modern feel.
 
-- **Primary Color**: Deep indigo `oklch(0.35 0.15 265)` - Communicates technical precision and reliability, used for primary actions
-- **Secondary Colors**: Slate gray `oklch(0.45 0.02 250)` for secondary UI elements; Cool gray `oklch(0.65 0.01 250)` for supporting text
-- **Accent Color**: Electric cyan `oklch(0.75 0.15 195)` - High-tech feel for active states, progress indicators, and success feedback
+- **Primary Color**: Vivid blue `oklch(0.45 0.20 255)` - Apple's signature blue, used for primary actions and active states
+- **Secondary Colors**: Ultra-light gray `oklch(0.96 0.005 250)` for secondary surfaces and subtle backgrounds
+- **Background**: Near-white `oklch(0.99 0 0)` - Clean, spacious canvas that lets content breathe
 - **Foreground/Background Pairings**: 
-  - Primary (Deep Indigo): White text `oklch(0.98 0 0)` - Ratio 7.8:1 ✓
-  - Accent (Electric Cyan): Deep slate `oklch(0.15 0.02 250)` - Ratio 8.2:1 ✓
-  - Background (Soft white `oklch(0.98 0 0)`): Dark text `oklch(0.15 0.02 250)` - Ratio 15.1:1 ✓
-  - Muted (Light gray `oklch(0.92 0.01 250)`): Medium text `oklch(0.45 0.02 250)` - Ratio 4.9:1 ✓
+  - Primary (Vivid Blue): White text `oklch(1 0 0)` - Ratio 8.5:1 ✓
+  - Background (Near-white): Dark text `oklch(0.18 0 0)` - Ratio 16.2:1 ✓
+  - Muted (Light gray): Medium text `oklch(0.52 0.01 250)` - Ratio 5.1:1 ✓
+  - Card surfaces (White): Dark text `oklch(0.18 0 0)` - Ratio 17.5:1 ✓
 
 ## Font Selection
 
-Typography should communicate technical precision while remaining highly readable for both headers and data displays.
+Typography should communicate Apple's refined simplicity with exceptional readability and subtle hierarchy.
 
-**Primary Font**: Space Grotesk - A geometric sans-serif with technical character that works well for both UI text and data display
+**Primary Font**: Inter - A modern humanist sans-serif optimized for UI with excellent readability at all sizes, similar to Apple's San Francisco
 
 - **Typographic Hierarchy**:
-  - H1 (Page Title): Space Grotesk Bold/32px/tight letter-spacing (-0.02em)
-  - H2 (Section Headers): Space Grotesk Semibold/20px/normal letter-spacing
-  - Body (UI Text): Space Grotesk Regular/16px/normal letter-spacing
-  - Small (Metadata): Space Grotesk Regular/14px/slightly wide letter-spacing (0.01em)
-  - Buttons: Space Grotesk Medium/16px/normal letter-spacing
+  - H1 (Page Title): Inter Semibold/32px/tight tracking
+  - H2 (Section Headers): Inter Semibold/24px/tight tracking
+  - H3 (Card Headers): Inter Semibold/18px/normal tracking
+  - Body (UI Text): Inter Regular/15px/normal tracking
+  - Small (Metadata): Inter Regular/13px/normal tracking
+  - Buttons: Inter Medium/15px/normal tracking
 
 ## Animations
 
-Animations should reinforce successful actions and provide clarity during processing states, with purposeful feedback that feels responsive rather than decorative.
+Animations should feel natural and fluid, inspired by Apple's physics-based motion design with easing curves that mimic real-world momentum.
 
-- **File upload**: Smooth fade-in and slide-up for each file added to the list (200ms ease-out)
-- **Drag reordering**: Follow cursor with slight elevation shadow, smooth position transitions when dropped (300ms spring)
-- **Processing states**: Pulsing indicator for parsing/merging operations, shimmer effect on loading states
-- **Success feedback**: Quick scale-up pulse (150ms) on successful merge, followed by gentle fade-in of download prompt
-- **Error states**: Subtle shake animation (250ms) for invalid files, red highlight fade-in
+- **Page transitions**: Smooth fade and slide (300ms ease-out) when moving between steps
+- **File upload**: Gentle slide-up and fade-in (300ms ease-out) with staggered delay for multiple items
+- **Hover states**: Subtle lift (2px translateY) with soft shadow expansion (200ms ease-out)
+- **Button interactions**: Scale feedback (0.99 on press) with spring physics
+- **Progress indicators**: Smooth rotation for loading spinners, gentle pulse for waiting states
+- **Success states**: Spring-based scale-up (from 0.95 to 1) with bounce, checkmark reveal
+- **Cards**: Gentle hover elevation with border color transition
+- **Step indicators**: Smooth scale and color transitions with checkmark morph on completion
 
 ## Component Selection
 

@@ -3,44 +3,46 @@
 
 @layer base {
   * {
-    @apply border-border
+    @apply border-border;
   }
   
   body {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 :root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.15 0.02 250);
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.18 0 0);
   
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.02 250);
+  --card-foreground: oklch(0.18 0 0);
   
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 250);
+  --popover-foreground: oklch(0.18 0 0);
   
-  --primary: oklch(0.35 0.15 265);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.45 0.20 255);
+  --primary-foreground: oklch(1 0 0);
   
-  --secondary: oklch(0.45 0.02 250);
-  --secondary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.96 0.005 250);
+  --secondary-foreground: oklch(0.18 0 0);
   
-  --muted: oklch(0.92 0.01 250);
-  --muted-foreground: oklch(0.45 0.02 250);
+  --muted: oklch(0.96 0.005 250);
+  --muted-foreground: oklch(0.52 0.01 250);
   
-  --accent: oklch(0.75 0.15 195);
-  --accent-foreground: oklch(0.15 0.02 250);
+  --accent: oklch(0.45 0.20 255);
+  --accent-foreground: oklch(1 0 0);
   
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
   
-  --border: oklch(0.85 0.01 250);
-  --input: oklch(0.85 0.01 250);
-  --ring: oklch(0.75 0.15 195);
+  --border: oklch(0.90 0.005 250);
+  --input: oklch(0.90 0.005 250);
+  --ring: oklch(0.45 0.20 255);
   
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
 @theme {
@@ -63,8 +65,30 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 3);
+  --radius-full: 9999px;
 }
 
 .drag-over {
-  @apply border-accent bg-accent/10;
+  @apply border-primary bg-primary/5 scale-[1.01];
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
 }

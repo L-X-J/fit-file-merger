@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { FileUploadZone } from '@/components/FileUploadZone'
 import { FileListItem } from '@/components/FileListItem'
-import { MergeOptionsCard } from '@/components/MergeOptionsCard'
+import { MergeOptionsDialog } from '@/components/MergeOptionsDialog'
 import { TrackMap } from '@/components/TrackMap'
 import { parseFitFile, mergeFitFiles, downloadMergedFile } from '@/lib/fitParser'
 import { FitFileData, MergeOptions } from '@/lib/types'
@@ -119,9 +119,13 @@ function App() {
   const handleDownload = async () => {
     if (!mergedData) return
 
+    await downloadBlob(mergedData)
+  }
+
+  const downloadBlob = async (blob: Blob) => {
     setIsDownloading(true)
     try {
-      const filename = await downloadMergedFile(mergedData)
+      const filename = await downloadMergedFile(blob)
       toast.success(`${t.downloadedAs} ${filename}`)
     } catch (error) {
       toast.error(t.mergeError)
@@ -289,9 +293,17 @@ function App() {
               className="space-y-6"
             >
               <Card className="p-8 border-2">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">{t.step2Title}</h2>
-                  <p className="text-muted-foreground">{t.step2Description}</p>
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-2">{t.step2Title}</h2>
+                    <p className="text-muted-foreground">{t.step2Description}</p>
+                  </div>
+                  <MergeOptionsDialog
+                    options={mergeOptions}
+                    onOptionsChange={setMergeOptions}
+                    lang={language}
+                    t={t}
+                  />
                 </div>
 
                 <div className="space-y-4 mb-6">
@@ -306,13 +318,6 @@ function App() {
                     />
                   ))}
                 </div>
-
-                <MergeOptionsCard
-                  options={mergeOptions}
-                  onOptionsChange={setMergeOptions}
-                  lang={language}
-                  t={t}
-                />
 
                 <div className="flex gap-3 mt-6">
                   <Button
@@ -377,7 +382,7 @@ function App() {
                         try {
                           const merged = await mergeFitFiles(parsedFiles, mergeOptions)
                           setMergedData(merged)
-                          await handleDownload()
+                          await downloadBlob(merged)
                         } catch (error) {
                           const errorMessage = error instanceof Error ? error.message : t.mergeError
                           toast.error(errorMessage)

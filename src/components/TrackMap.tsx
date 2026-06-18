@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { X } from '@phosphor-icons/react'
 import { FitFileData } from '@/lib/types'
 import { formatDistance, formatDuration } from '@/lib/fitParser'
+import { getRecordCoordinate } from '@/lib/coordinates'
 import type { Language } from '@/lib/i18n'
 
 interface TrackMapProps {
@@ -26,8 +27,8 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
     const map = L.map(containerRef.current).setView([0, 0], 2)
     mapRef.current = map
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors © CARTO',
       maxZoom: 19,
     }).addTo(map)
 
@@ -39,11 +40,10 @@ export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapPr
         const coords: L.LatLngTuple[] = []
         
         file.parsed.messages.recordMesgs.forEach((record: any) => {
-          if (record.positionLat !== undefined && record.positionLong !== undefined) {
-            const lat = record.positionLat
-            const lng = record.positionLong
-            coords.push([lat, lng])
-            allCoords.push([lat, lng])
+          const coordinate = getRecordCoordinate(record)
+          if (coordinate) {
+            coords.push(coordinate)
+            allCoords.push(coordinate)
           }
         })
 

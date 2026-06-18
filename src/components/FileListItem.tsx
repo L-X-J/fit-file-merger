@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FitFileData } from '@/lib/types'
 import { formatDuration, formatDistance, formatDate, formatElevation } from '@/lib/fitParser'
+import { getRecordCoordinate } from '@/lib/coordinates'
 import type { Language } from '@/lib/i18n'
 
 interface FileListItemProps {
@@ -30,8 +31,9 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
 
     const coords: [number, number][] = []
     fileData.parsed.messages.recordMesgs.forEach((record: any) => {
-      if (record.positionLat !== undefined && record.positionLong !== undefined) {
-        coords.push([record.positionLat, record.positionLong])
+      const coordinate = getRecordCoordinate(record)
+      if (coordinate) {
+        coords.push(coordinate)
       }
     })
 
@@ -122,7 +124,7 @@ export const FileListItem = ({ fileData, onRemove, lang, t, showTrack = false }:
       whileHover={{ y: -2 }}
     >
       <Card className="relative p-5 border hover:border-primary/30 hover:shadow-lg transition-all duration-300 overflow-hidden">
-        {showTrack && fileData.status === 'parsed' && fileData.parsed?.records && (
+        {showTrack && fileData.status === 'parsed' && fileData.parsed?.messages?.recordMesgs && (
           <canvas 
             ref={canvasRef} 
             width={600} 

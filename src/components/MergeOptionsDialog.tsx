@@ -18,12 +18,12 @@ export const MergeOptionsDialog = ({ options, onOptionsChange, lang, t }: MergeO
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
-          size="sm"
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          variant="outline"
+          size="icon"
+          className="rounded-full text-muted-foreground hover:text-foreground"
+          aria-label={t.mergeOptions}
         >
           <Gear size={18} weight="duotone" />
-          <span className="text-sm">{t.mergeOptions}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">

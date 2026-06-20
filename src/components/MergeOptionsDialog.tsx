@@ -18,9 +18,15 @@ interface MergeOptionsDialogProps {
   options: MergeOptions
   onOptionsChange: (options: MergeOptions) => void
   t: Translations
+  disabled?: boolean
 }
 
-export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptionsDialogProps) => {
+export const MergeOptionsDialog = ({
+  options,
+  onOptionsChange,
+  t,
+  disabled = false,
+}: MergeOptionsDialogProps) => {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -29,6 +35,7 @@ export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptions
           variant="outline"
           className="h-11 rounded-lg bg-white/90 px-5 font-semibold shadow-sm"
           aria-label={t.mergeOptions}
+          disabled={disabled}
         >
           <Settings2 />
           {t.mergeOptions}
@@ -51,6 +58,7 @@ export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptions
             <Switch
               id="dialog-sort-chronologically"
               checked={options.sortChronologically}
+              disabled={disabled}
               onCheckedChange={(checked) => onOptionsChange({ ...options, sortChronologically: checked })}
             />
           </div>
@@ -67,6 +75,7 @@ export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptions
             <Switch
               id="dialog-preserve-all-data"
               checked={options.preserveAllData}
+              disabled={disabled}
               onCheckedChange={(checked) => onOptionsChange({ ...options, preserveAllData: checked })}
             />
           </div>
@@ -83,6 +92,7 @@ export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptions
             <Switch
               id="dialog-remove-duplicates"
               checked={options.removeDuplicateTimestamps}
+              disabled={disabled}
               onCheckedChange={(checked) =>
                 onOptionsChange({ ...options, removeDuplicateTimestamps: checked })
               }

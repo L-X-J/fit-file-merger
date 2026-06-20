@@ -76,6 +76,7 @@ type TranslationDictionary = {
   avgPower: string
   maxPower: string
   mergeReady: string
+  mergeInProgressMessage: string
   stepOnePill: string
   stepTwoPill: string
   stepThreePill: string
@@ -184,6 +185,8 @@ export const translations: Record<Language, TranslationDictionary> = {
     avgPower: 'Average Power',
     maxPower: 'Max Power',
     mergeReady: 'Ready for download',
+    mergeInProgressMessage:
+      'We are combining your activity streams, route points, and timing data. Keep this tab open while the rider finishes the merge.',
     stepOnePill: 'Step 1 of 3',
     stepTwoPill: 'Step 2 of 3',
     stepThreePill: 'Step 3 of 3',
@@ -285,6 +288,8 @@ export const translations: Record<Language, TranslationDictionary> = {
     avgPower: '平均功率',
     maxPower: '最大功率',
     mergeReady: '可下载',
+    mergeInProgressMessage:
+      '正在合并你的活动轨迹、路线点和时间数据，请保持此页面打开。',
     stepOnePill: '第 1 步 / 共 3 步',
     stepTwoPill: '第 2 步 / 共 3 步',
     stepThreePill: '第 3 步 / 共 3 步',

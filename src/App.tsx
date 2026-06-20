@@ -6,6 +6,7 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   Download,
@@ -16,12 +17,12 @@ import {
   Languages,
   MapPinned,
   Route,
-  Settings2,
   Shield,
   Trash2,
 } from 'lucide-react'
 
 import { FileUploadZone } from '@/components/FileUploadZone'
+import { LottieAnimation } from '@/components/LottieAnimation'
 import { MergeOptionsDialog } from '@/components/MergeOptionsDialog'
 import { TrackMap } from '@/components/TrackMap'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -36,6 +37,7 @@ import {
 } from '@/lib/fitParser'
 import { useTranslations, type Language } from '@/lib/i18n'
 import type { FitFileData, MergeOptions } from '@/lib/types'
+import cyclingAnimation from '@/assets/cycling.json'
 
 type FlowStep = 1 | 2 | 3
 
@@ -154,6 +156,7 @@ function App() {
   })
   const [mergedData, setMergedData] = useState<Blob | null>(null)
   const [isMerging, setIsMerging] = useState(false)
+  const [mergeProgress, setMergeProgress] = useState(0)
   const [isDownloading, setIsDownloading] = useState(false)
   const [language, setLanguage] = useState<Language>('en')
   const [currentStep, setCurrentStep] = useState<FlowStep>(1)
@@ -248,6 +251,30 @@ function App() {
     }
   }, [demoMode])
 
+  useEffect(() => {
+    if (!isMerging) return
+
+    setMergeProgress(0)
+
+    const startedAt = performance.now()
+    let frameId = 0
+
+    const tick = (now: number) => {
+      const elapsed = now - startedAt
+      const nextProgress =
+        elapsed <= 2000
+          ? (elapsed / 2000) * 80
+          : 80 + Math.min((elapsed - 2000) / 10000, 1) * 15
+
+      setMergeProgress(Math.min(nextProgress, 95))
+      frameId = requestAnimationFrame(tick)
+    }
+
+    frameId = requestAnimationFrame(tick)
+
+    return () => cancelAnimationFrame(frameId)
+  }, [isMerging])
+
   const handleFilesSelected = async (newFiles: File[]) => {
     invalidateMergedData()
 
@@ -323,7 +350,10 @@ function App() {
 
     setIsMerging(true)
     try {
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       const merged = await mergeFitFiles(parsedFiles, mergeOptions)
+      setMergeProgress(100)
+      await new Promise((resolve) => window.setTimeout(resolve, 360))
       setMergedData(merged)
       setCurrentStep(3)
     } catch (error) {
@@ -348,15 +378,6 @@ function App() {
     }
   }
 
-  const stepTitle =
-    currentStep === 1 ? t.heroTitle : currentStep === 2 ? t.stepTwoTitle : t.stepThreeTitle
-  const stepSubtitle =
-    currentStep === 1
-      ? t.heroDescription
-      : currentStep === 2
-        ? t.stepTwoSubtitle
-        : t.stepThreeSubtitle
-
   return (
     <>
       <div className="app-shell">
@@ -374,9 +395,6 @@ function App() {
                 <Shield className="size-4 text-primary" />
                 {t.privacyHeader}
               </div>
-              <Button type="button" variant="outline" className="rounded-full px-5">
-                {t.learnMore}
-              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -386,9 +404,6 @@ function App() {
               >
                 <Languages className="size-4" />
                 {language === 'en' ? '中文' : 'English'}
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="rounded-full text-slate-900">
-                <Settings2 className="size-5" />
               </Button>
             </div>
           </div>
@@ -439,17 +454,19 @@ function App() {
                 })}
               </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: currentStep === 1 ? 12 : 0 }}
-              >
-                <h1 className="mx-auto max-w-6xl text-4xl font-bold tracking-tight text-balance text-slate-950 sm:text-5xl lg:text-[3.35rem]">
-                  {stepTitle}
-                </h1>
-                <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
-                  {stepSubtitle}
-                </p>
-              </motion.div>
+              {currentStep === 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 12 }}
+                >
+                  <h1 className="mx-auto max-w-6xl text-4xl font-bold tracking-tight text-balance text-slate-950 sm:text-5xl lg:text-[3.35rem]">
+                    {t.heroTitle}
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+                    {t.heroDescription}
+                  </p>
+                </motion.div>
+              )}
             </section>
 
             {currentStep === 1 && (
@@ -515,6 +532,16 @@ function App() {
               <section className="mx-auto mt-8 max-w-[72.5rem]">
                 <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-3 text-base font-semibold text-slate-800">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 rounded-lg bg-white/90 px-5 font-semibold text-slate-900 shadow-sm"
+                      onClick={() => setCurrentStep(1)}
+                      disabled={isMerging}
+                    >
+                      <ChevronLeft className="size-4" />
+                      {t.back}
+                    </Button>
                     <span>
                       {files.length} {t.filesSelected}
                     </span>
@@ -533,12 +560,14 @@ function App() {
                         invalidateMergedData()
                       }}
                       t={t}
+                      disabled={isMerging}
                     />
                     <Button
                       type="button"
                       variant="outline"
                       className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
                       onClick={() => addMoreInputRef.current?.click()}
+                      disabled={isMerging}
                     >
                       <FilePlus2 className="size-4" />
                       {t.addMore}
@@ -690,16 +719,7 @@ function App() {
                   </div>
                 )}
 
-                <div className="mt-5 flex items-center justify-between gap-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="rounded-full px-4"
-                    onClick={() => setCurrentStep(1)}
-                  >
-                    {t.back}
-                  </Button>
-
+                <div className="mt-5 flex justify-end">
                   <Button
                     type="button"
                     size="lg"
@@ -716,6 +736,18 @@ function App() {
 
             {currentStep === 3 && (
               <section className="mx-auto mt-4 max-w-[82rem]">
+                <div className="mb-4 flex items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    {t.back}
+                  </Button>
+                </div>
+
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_26rem]">
                   <div className="space-y-6">
                     <TrackMap
@@ -770,15 +802,6 @@ function App() {
                       </CardContent>
                     </Card>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
-                      onClick={() => setCurrentStep(2)}
-                    >
-                      {t.back}
-                    </Button>
                   </div>
 
                   <div className="space-y-6">
@@ -869,6 +892,59 @@ function App() {
           </div>
         </main>
       </div>
+
+      {currentStep === 2 && (
+        <motion.div
+          className={`fixed inset-0 z-40 flex items-center justify-center bg-slate-950/18 px-4 backdrop-blur-[2px] ${
+            isMerging ? 'pointer-events-auto' : 'pointer-events-none'
+          }`}
+          initial={false}
+          animate={{ opacity: isMerging ? 1 : 0.001 }}
+          transition={{ duration: 0.18 }}
+          role="status"
+          aria-live="polite"
+          aria-hidden={!isMerging}
+        >
+          <motion.div
+            initial={false}
+            animate={{
+              opacity: isMerging ? 1 : 0.001,
+              y: isMerging ? 0 : 18,
+              scale: isMerging ? 1 : 0.96,
+            }}
+            transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-[36rem] overflow-hidden rounded-xl border border-primary/20 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.18)]"
+          >
+            <div className="grid items-center gap-5 px-5 py-6 sm:grid-cols-[12rem_1fr] sm:px-6">
+              <div className="mx-auto h-36 w-44 overflow-hidden rounded-lg border border-blue-100 bg-blue-50/70">
+                <LottieAnimation
+                  animationData={cyclingAnimation}
+                  className="h-full w-full"
+                  ariaLabel={t.merging}
+                  active={isMerging}
+                />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-slate-950">{t.merging}</p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  {t.mergeInProgressMessage}
+                </p>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+                  <motion.div
+                    className="h-full rounded-full bg-primary"
+                    initial={false}
+                    animate={{ width: `${mergeProgress}%` }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                  />
+                </div>
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  {Math.round(mergeProgress)}%
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       <input
         ref={addMoreInputRef}

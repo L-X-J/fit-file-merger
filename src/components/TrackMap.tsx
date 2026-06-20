@@ -87,7 +87,7 @@ export const TrackMap = ({
 
       if (coordinates.length === 0) return
 
-      const color = minimal ? '#0f6ff1' : TRACK_COLORS[index % TRACK_COLORS.length]
+      const color = TRACK_COLORS[index % TRACK_COLORS.length]
 
       const polyline = L.polyline(coordinates, {
         color,

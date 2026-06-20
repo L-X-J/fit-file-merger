@@ -18,9 +18,9 @@ import {
   MapPinned,
   Route,
   Shield,
-  Trash2,
 } from 'lucide-react'
 
+import { FileListItem } from '@/components/FileListItem'
 import { FileUploadZone } from '@/components/FileUploadZone'
 import { LottieAnimation } from '@/components/LottieAnimation'
 import { MergeOptionsDialog } from '@/components/MergeOptionsDialog'
@@ -34,6 +34,7 @@ import {
   formatDistance,
   parseFitFile,
 } from '@/lib/fitParser'
+import { calculateFileMd5 } from '@/lib/fileHash'
 import { useTranslations, type Language } from '@/lib/i18n'
 import { mergeFitFilesInWorker } from '@/lib/mergeInWorker'
 import type { FitFileData, MergeOptions } from '@/lib/types'
@@ -143,9 +144,12 @@ const getSportTone = (sport?: string) => {
     : 'bg-blue-100 text-primary'
 }
 
-const getFileDevice = (file: FitFileData) =>
-  demoActivities.find((activity) => activity.name === file.name)?.device ||
-  (file.metadata?.sport ? `${file.metadata.sport} activity` : 'Garmin activity')
+const getReviewAccent = (sport: string | undefined, index: number) => {
+  const normalized = sport?.toLowerCase() || ''
+  if (normalized.includes('run')) return 'blue'
+  if (index % 4 === 3) return 'orange'
+  return 'emerald'
+}
 
 const getDefaultLanguage = (): Language => {
   if (typeof navigator === 'undefined') return 'zh'
@@ -206,6 +210,14 @@ function App() {
 
   const toggleLanguage = () => {
     setLanguage((current) => (current === 'en' ? 'zh' : 'en'))
+  }
+
+  const handleReturnToUpload = () => {
+    invalidateMergedData()
+    setFiles([])
+    setMergeProgress(0)
+    setIsMerging(false)
+    setCurrentStep(1)
   }
 
   useEffect(() => {
@@ -285,12 +297,53 @@ function App() {
   }, [isMerging])
 
   const handleFilesSelected = async (newFiles: File[]) => {
+    if (newFiles.length === 0) return
+
     invalidateMergedData()
 
-    const fileDataArray: FitFileData[] = newFiles.map((file) => ({
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
+    let hashedFiles: Array<{ file: File; fileHash: string }>
+
+    try {
+      hashedFiles = await Promise.all(
+        newFiles.map(async (file) => ({
+          file,
+          fileHash: await calculateFileMd5(file),
+        }))
+      )
+    } catch {
+      toast.error('Failed to fingerprint selected files.')
+      return
+    }
+
+    const existingHashes = new Set(files.map((file) => file.fileHash).filter(Boolean))
+    const newHashes = new Set<string>()
+    const uniqueFiles: Array<{ file: File; fileHash: string }> = []
+    let duplicateCount = 0
+
+    hashedFiles.forEach((hashedFile) => {
+      if (existingHashes.has(hashedFile.fileHash) || newHashes.has(hashedFile.fileHash)) {
+        duplicateCount += 1
+        return
+      }
+
+      newHashes.add(hashedFile.fileHash)
+      uniqueFiles.push(hashedFile)
+    })
+
+    if (duplicateCount > 0) {
+      toast.warning(
+        `Skipped ${duplicateCount} duplicate FIT file${duplicateCount === 1 ? '' : 's'}.`
+      )
+    }
+
+    if (uniqueFiles.length === 0) return
+
+    const createdAt = Date.now()
+    const fileDataArray: FitFileData[] = uniqueFiles.map(({ file, fileHash }) => ({
+      id: `${fileHash}-${createdAt}-${Math.random()}`,
       name: file.name,
       file,
+      fileHash,
       status: 'pending',
     }))
 
@@ -412,7 +465,7 @@ function App() {
                 aria-label={t.languageLabel}
               >
                 <Languages className="size-4" />
-                {language === 'en' ? '中文' : 'English'}
+                {language === 'en' ? '\u4e2d\u6587' : 'English'}
               </Button>
             </div>
           </div>
@@ -538,27 +591,29 @@ function App() {
             )}
 
             {currentStep === 2 && (
-              <section className="mx-auto mt-8 max-w-[72.5rem]">
-                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-3 text-base font-semibold text-slate-800">
+              <section className="mx-auto mt-6 max-w-[72.5rem] sm:mt-8">
+                <div className="mb-5 flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center gap-4 text-base font-semibold text-slate-800">
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 rounded-lg bg-white/90 px-5 font-semibold text-slate-900 shadow-sm"
-                      onClick={() => setCurrentStep(1)}
+                      className="h-12 rounded-xl bg-white/92 px-5 font-semibold text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
+                      onClick={handleReturnToUpload}
                       disabled={isMerging}
                     >
                       <ChevronLeft className="size-4" />
                       {t.back}
                     </Button>
-                    <span>
-                      {files.length} {t.filesSelected}
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="inline-flex items-center gap-2 text-emerald-600">
-                      {parsedFiles.length} {t.validFiles}
-                      <CheckCircle2 className="size-4" />
-                    </span>
+                    <div className="flex min-w-0 flex-wrap items-center gap-3 text-[1.05rem] sm:text-xl">
+                      <span className="text-slate-900">
+                        {files.length} {t.filesSelected}
+                      </span>
+                      <span className="size-1.5 rounded-full bg-slate-400" />
+                      <span className="inline-flex items-center gap-2 text-emerald-600">
+                        {parsedFiles.length} {t.validFiles}
+                        <CheckCircle2 className="size-5" />
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -574,7 +629,7 @@ function App() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
+                      className="h-12 rounded-xl bg-white/92 px-5 font-semibold shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
                       onClick={() => addMoreInputRef.current?.click()}
                       disabled={isMerging}
                     >
@@ -584,124 +639,17 @@ function App() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  {files.map((file) => (
-                    <div
+                <div className="flex min-w-0 flex-col gap-3.5">
+                  {files.map((file, index) => (
+                    <FileListItem
                       key={file.id}
-                      className="grid min-h-[5.75rem] items-center gap-4 rounded-xl border border-border/70 bg-white/88 px-5 py-4 shadow-[0_8px_26px_rgba(15,23,42,0.035)] backdrop-blur-sm md:grid-cols-[1.6fr_0.56fr_0.9fr_0.68fr_0.74fr_0.72fr_auto]"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-4">
-                          <span
-                            className={`inline-flex size-12 shrink-0 items-center justify-center rounded-full ${getSportTone(file.metadata?.sport)}`}
-                          >
-                            {getSportIcon(file.metadata?.sport)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-[1.05rem] font-semibold text-foreground">
-                              {file.name}
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {getFileDevice(file)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-800">
-                        <span
-                          className={`inline-flex size-2.5 rounded-full ${getSportTone(file.metadata?.sport).includes('emerald') ? 'bg-emerald-400' : 'bg-blue-300'}`}
-                        />
-                        {file.metadata?.sport || 'Activity'}
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm text-slate-500">
-                        <Calendar className="size-4" />
-                        <span>
-                          <span className="block font-semibold text-slate-700">
-                            {formatActivityDate(file.metadata?.startTime).date}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-500">
-                            {formatActivityDate(file.metadata?.startTime).time}
-                          </span>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm text-slate-500">
-                        <Clock3 className="size-4" />
-                        <span>
-                          <span className="block font-semibold text-slate-900">
-                            {formatClockDuration(file.metadata?.duration)}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-500">{t.duration}</span>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm text-slate-500">
-                        <MapPinned className="size-4" />
-                        <span>
-                          <span className="block font-semibold text-slate-900">
-                            {formatDistance(file.metadata?.distance)}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-500">{t.distance}</span>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`inline-flex size-5 items-center justify-center rounded-full ${
-                              file.status === 'parsed'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : file.status === 'error'
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            <Check className="size-3" />
-                          </span>
-                          <span
-                            className={`text-sm font-semibold ${
-                              file.status === 'parsed'
-                                ? 'text-emerald-700'
-                                : file.status === 'error'
-                                  ? 'text-rose-700'
-                                  : 'text-slate-600'
-                            }`}
-                          >
-                            <span className="block">
-                              {file.status === 'parsed'
-                                ? t.parsed
-                                : file.status === 'error'
-                                  ? t.error
-                                  : file.status === 'parsing'
-                                    ? t.parsing
-                                    : t.pending}
-                            </span>
-                            <span className="text-xs text-slate-500">{t.parseSuccess}</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 rounded-lg border border-border/70 bg-white/80"
-                        onClick={() => handleRemoveFile(file.id)}
-                        aria-label={`${t.removeFile}: ${file.name}`}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-
-                      {file.status === 'error' && file.error && (
-                        <div className="md:col-span-7">
-                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            {file.error}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      fileData={file}
+                      onRemove={() => handleRemoveFile(file.id)}
+                      lang={language}
+                      t={t}
+                      showTrack
+                      accent={getReviewAccent(file.metadata?.sport, index)}
+                    />
                   ))}
                 </div>
 
@@ -714,30 +662,26 @@ function App() {
                   </Alert>
                 )}
 
-                {errorFiles.length === 0 && files.length > 0 && (
-                  <div className="mt-5 rounded-[1.25rem] border border-primary/20 bg-white/75 px-5 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-center gap-4">
-                      <span className="inline-flex size-12 items-center justify-center rounded-full bg-blue-100 text-primary">
-                        <Shield className="size-5" />
-                      </span>
-                      <div>
-                        <p className="text-lg font-semibold text-primary">{t.allGood}</p>
-                        <p className="mt-1 text-sm font-medium text-slate-700">{t.allFilesReady}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-5 flex justify-end">
+                <div className="sticky bottom-0 z-20 -mx-4 mt-6 bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-5 pt-6 lg:static lg:mx-0 lg:flex lg:justify-end lg:bg-transparent lg:p-0">
                   <Button
                     type="button"
                     size="lg"
-                    className="rounded-full px-6"
+                    className="h-14 w-full rounded-xl text-base font-semibold shadow-[0_18px_42px_rgba(37,99,235,0.22)] lg:w-auto lg:rounded-full lg:px-7"
                     onClick={handleContinueToPreview}
                     disabled={!canMerge || isMerging}
                   >
                     {isMerging ? t.merging : t.continueToPreview}
                     <ChevronRight className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="mx-auto mt-3 flex h-11 text-primary lg:hidden"
+                    onClick={handleReturnToUpload}
+                    disabled={isMerging}
+                  >
+                    <ChevronLeft className="size-4" />
+                    {t.back}
                   </Button>
                 </div>
               </section>

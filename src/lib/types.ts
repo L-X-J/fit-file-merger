@@ -2,6 +2,7 @@ export interface FitFileData {
   id: string
   name: string
   file: File
+  fileHash?: string
   parsed?: any
   metadata?: {
     activityType?: string

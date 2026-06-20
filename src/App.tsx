@@ -147,6 +147,15 @@ const getFileDevice = (file: FitFileData) =>
   demoActivities.find((activity) => activity.name === file.name)?.device ||
   (file.metadata?.sport ? `${file.metadata.sport} activity` : 'Garmin activity')
 
+const getDefaultLanguage = (): Language => {
+  if (typeof navigator === 'undefined') return 'zh'
+
+  const systemLanguage = navigator.languages?.find(Boolean) || navigator.language || ''
+  if (!systemLanguage) return 'zh'
+
+  return systemLanguage.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
 function App() {
   const [files, setFiles] = useState<FitFileData[]>([])
   const [mergeOptions, setMergeOptions] = useState<MergeOptions>({
@@ -158,7 +167,7 @@ function App() {
   const [isMerging, setIsMerging] = useState(false)
   const [mergeProgress, setMergeProgress] = useState(0)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [language, setLanguage] = useState<Language>('en')
+  const [language, setLanguage] = useState<Language>(getDefaultLanguage)
   const [currentStep, setCurrentStep] = useState<FlowStep>(1)
   const addMoreInputRef = useRef<HTMLInputElement>(null)
   const demoMode =

@@ -32,10 +32,10 @@ import { Toaster } from '@/components/ui/sonner'
 import {
   downloadMergedFile,
   formatDistance,
-  mergeFitFiles,
   parseFitFile,
 } from '@/lib/fitParser'
 import { useTranslations, type Language } from '@/lib/i18n'
+import { mergeFitFilesInWorker } from '@/lib/mergeInWorker'
 import type { FitFileData, MergeOptions } from '@/lib/types'
 import cyclingAnimation from '@/assets/cycling.json'
 
@@ -351,7 +351,7 @@ function App() {
     setIsMerging(true)
     try {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-      const merged = await mergeFitFiles(parsedFiles, mergeOptions)
+      const merged = await mergeFitFilesInWorker(parsedFiles, mergeOptions)
       setMergeProgress(100)
       await new Promise((resolve) => window.setTimeout(resolve, 360))
       setMergedData(merged)

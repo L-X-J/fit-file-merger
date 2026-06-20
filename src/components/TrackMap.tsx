@@ -1,259 +1,378 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Card } from '@/components/ui/card'
+import { Activity, Map as MapIcon, Mountain, Route, Timer, X } from 'lucide-react'
+
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { X } from '@phosphor-icons/react'
-import { FitFileData } from '@/lib/types'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { formatDistance, formatDuration } from '@/lib/fitParser'
 import { getRecordCoordinate } from '@/lib/coordinates'
-import type { Language } from '@/lib/i18n'
+import type { Translations } from '@/lib/i18n'
+import type { FitFileData } from '@/lib/types'
+
+const TRACK_COLORS = ['#2f6df6', '#0f8f77', '#ea580c', '#8b5cf6', '#d946ef', '#d97706']
 
 interface TrackMapProps {
   files: FitFileData[]
   onClose?: () => void
-  lang: Language
-  t: any
+  t: Translations
   inline?: boolean
+  minimal?: boolean
+  staticPreview?: boolean
 }
 
-export const TrackMap = ({ files, onClose, lang, t, inline = false }: TrackMapProps) => {
+export const TrackMap = ({
+  files,
+  onClose,
+  t,
+  inline = false,
+  minimal = false,
+  staticPreview = false,
+}: TrackMapProps) => {
   const mapRef = useRef<L.Map | null>(null)
+  const layerGroupRef = useRef<L.LayerGroup | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const parsedFiles = useMemo(
+    () => files.filter((file) => file.status === 'parsed' && file.parsed?.messages?.recordMesgs),
+    [files]
+  )
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const map = L.map(containerRef.current).setView([0, 0], 2)
-    mapRef.current = map
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+    }).setView([18, 0], 2)
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap contributors © CARTO',
+    mapRef.current = map
+    layerGroupRef.current = L.layerGroup().addTo(map)
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
     }).addTo(map)
-
-    const allCoords: L.LatLngTuple[] = []
-    const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
-
-    files.forEach((file, index) => {
-      if (file.status === 'parsed' && file.parsed?.messages?.recordMesgs) {
-        const coords: L.LatLngTuple[] = []
-        
-        file.parsed.messages.recordMesgs.forEach((record: any) => {
-          const coordinate = getRecordCoordinate(record)
-          if (coordinate) {
-            coords.push(coordinate)
-            allCoords.push(coordinate)
-          }
-        })
-
-        if (coords.length > 0) {
-          const polyline = L.polyline(coords, {
-            color: colors[index % colors.length],
-            weight: 3,
-            opacity: 0.7
-          }).addTo(map)
-
-          const startMarker = L.circleMarker(coords[0], {
-            radius: 8,
-            fillColor: colors[index % colors.length],
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-          }).addTo(map)
-
-          const endMarker = L.circleMarker(coords[coords.length - 1], {
-            radius: 6,
-            fillColor: '#fff',
-            color: colors[index % colors.length],
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-          }).addTo(map)
-
-          const popupContent = `
-            <div style="font-family: 'Space Grotesk', sans-serif;">
-              <strong>${file.name}</strong><br/>
-              ${file.metadata?.distance ? `${t.distance}: ${formatDistance(file.metadata.distance)}` : ''}<br/>
-              ${file.metadata?.duration ? `${t.duration}: ${formatDuration(file.metadata.duration)}` : ''}
-            </div>
-          `
-          polyline.bindPopup(popupContent)
-          startMarker.bindPopup(popupContent)
-        }
-      }
-    })
-
-    if (allCoords.length > 0) {
-      const bounds = L.latLngBounds(allCoords)
-      map.fitBounds(bounds, { padding: [50, 50] })
-    }
 
     return () => {
       map.remove()
       mapRef.current = null
+      layerGroupRef.current = null
     }
-  }, [files, t, lang])
+  }, [])
 
-  const calculateStats = () => {
+  useEffect(() => {
+    const map = mapRef.current
+    const layerGroup = layerGroupRef.current
+    if (!map || !layerGroup) return
+
+    layerGroup.clearLayers()
+    const allCoordinates: L.LatLngTuple[] = []
+
+    parsedFiles.forEach((file, index) => {
+      const coordinates: L.LatLngTuple[] = []
+      file.parsed.messages.recordMesgs.forEach((record: any) => {
+        const coordinate = getRecordCoordinate(record)
+        if (coordinate) {
+          coordinates.push(coordinate)
+          allCoordinates.push(coordinate)
+        }
+      })
+
+      if (coordinates.length === 0) return
+
+      const color = minimal ? '#0f6ff1' : TRACK_COLORS[index % TRACK_COLORS.length]
+
+      const polyline = L.polyline(coordinates, {
+        color,
+        weight: minimal ? 5 : 4,
+        opacity: minimal ? 0.92 : 0.82,
+      }).addTo(layerGroup)
+
+      if (!minimal) {
+        L.circleMarker(coordinates[0], {
+          radius: 6,
+          color: '#ffffff',
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 1,
+        }).addTo(layerGroup)
+
+        L.circleMarker(coordinates[coordinates.length - 1], {
+          radius: 5,
+          color,
+          weight: 2,
+          fillColor: '#ffffff',
+          fillOpacity: 1,
+        }).addTo(layerGroup)
+      }
+
+      const popupContent = `
+        <div style="font-family: Inter, system-ui, sans-serif; min-width: 180px;">
+          <strong>${file.name}</strong><br />
+          ${file.metadata?.distance ? `${t.distance}: ${formatDistance(file.metadata.distance)}` : ''}<br />
+          ${file.metadata?.duration ? `${t.duration}: ${formatDuration(file.metadata.duration)}` : ''}
+        </div>
+      `
+      polyline.bindPopup(popupContent)
+    })
+
+    if (minimal && allCoordinates.length > 0) {
+      L.marker(allCoordinates[0], {
+        icon: L.divIcon({
+          className: 'map-start-marker',
+          html: '<span></span>',
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+      }).addTo(layerGroup)
+
+      L.marker(allCoordinates[allCoordinates.length - 1], {
+        icon: L.divIcon({
+          className: 'map-end-marker',
+          html: '<span></span>',
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+      }).addTo(layerGroup)
+    }
+
+    if (allCoordinates.length > 0) {
+      map.fitBounds(L.latLngBounds(allCoordinates), { padding: [36, 36] })
+    } else {
+      map.setView([18, 0], 2)
+    }
+
+    window.setTimeout(() => map.invalidateSize(), 50)
+  }, [minimal, parsedFiles, t.distance, t.duration])
+
+  const stats = useMemo(() => {
     let totalDistance = 0
     let totalTime = 0
     let totalMovingTime = 0
     let maxSpeed = 0
     let totalElevation = 0
     let maxPower = 0
-    let totalPowerReadings = 0
+    let totalPowerSamples = 0
     let powerSum = 0
 
-    files.forEach(file => {
-      if (file.status === 'parsed' && file.metadata) {
+    parsedFiles.forEach((file) => {
+      if (file.metadata) {
         totalDistance += file.metadata.distance || 0
         totalTime += file.metadata.duration || 0
-        
-        if (file.metadata.totalAscent !== undefined && file.metadata.totalAscent !== null) {
-          totalElevation += file.metadata.totalAscent
-        }
+        totalElevation += file.metadata.totalAscent || 0
       }
 
-      if (file.parsed?.messages?.sessionMesgs?.[0]) {
-        const session = file.parsed.messages.sessionMesgs[0]
+      const session = file.parsed?.messages?.sessionMesgs?.[0]
+      if (session) {
         totalMovingTime += session.totalTimerTime || 0
-        if (session.maxSpeed) {
-          maxSpeed = Math.max(maxSpeed, session.maxSpeed)
-        }
-        if (session.maxPower) {
-          maxPower = Math.max(maxPower, session.maxPower)
-        }
-        if (session.avgPower) {
-          powerSum += session.avgPower * (session.totalTimerTime || 0)
-          totalPowerReadings += session.totalTimerTime || 0
+        if (session.maxSpeed) maxSpeed = Math.max(maxSpeed, session.maxSpeed)
+        if (session.maxPower) maxPower = Math.max(maxPower, session.maxPower)
+        if (session.avgPower && session.totalTimerTime) {
+          powerSum += session.avgPower * session.totalTimerTime
+          totalPowerSamples += session.totalTimerTime
         }
       }
 
-      if (file.parsed?.messages?.recordMesgs) {
-        const powers: number[] = []
-        
-        file.parsed.messages.recordMesgs.forEach((record: any) => {
-          if (record.power !== undefined && record.power !== null && record.power > 0) {
-            powers.push(record.power)
-          }
-        })
-
-        if (powers.length > 0) {
-          const filePower = Math.max(...powers)
-          maxPower = Math.max(maxPower, filePower)
+      file.parsed?.messages?.recordMesgs?.forEach((record: any) => {
+        if (record.power !== undefined && record.power !== null && record.power > 0) {
+          maxPower = Math.max(maxPower, record.power)
         }
-      }
+      })
     })
 
-    const avgSpeed = totalMovingTime > 0 ? (totalDistance / (totalMovingTime / 3600)) : 0
-    const avgPower = totalPowerReadings > 0 ? powerSum / totalPowerReadings : 0
+    const avgSpeed = totalMovingTime > 0 ? totalDistance / (totalMovingTime / 3600) : 0
+    const avgPower = totalPowerSamples > 0 ? powerSum / totalPowerSamples : 0
 
-    return { 
-      totalDistance, 
-      totalTime, 
-      totalMovingTime, 
-      avgSpeed, 
-      maxSpeed, 
+    return {
+      totalDistance,
+      totalTime,
+      totalMovingTime,
+      avgSpeed,
+      maxSpeed,
       totalElevation,
       avgPower,
-      maxPower 
+      maxPower,
     }
-  }
+  }, [parsedFiles])
 
-  const stats = calculateStats()
+  const statTiles = [
+    {
+      label: t.totalDistance,
+      value: formatDistance(stats.totalDistance),
+      icon: <Route className="size-4 text-primary" />,
+    },
+    {
+      label: t.totalTime,
+      value: formatDuration(stats.totalTime),
+      icon: <Timer className="size-4 text-primary" />,
+    },
+    {
+      label: t.movingTime,
+      value: formatDuration(stats.totalMovingTime),
+      icon: <Activity className="size-4 text-primary" />,
+    },
+    {
+      label: t.elevation,
+      value: `${stats.totalElevation.toFixed(0)} m`,
+      icon: <Mountain className="size-4 text-primary" />,
+    },
+  ]
+
+  const legendFiles = parsedFiles.map((file, index) => ({
+    id: file.id,
+    name: file.name,
+    color: TRACK_COLORS[index % TRACK_COLORS.length],
+  }))
 
   const mapContent = (
-    <>
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <div ref={containerRef} className="flex-1 min-h-[300px] lg:min-h-[500px]" />
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/85">
+        <div ref={containerRef} className="min-h-[320px] w-full lg:min-h-[540px]" />
+      </div>
 
-        <div className="lg:w-80 p-4 border-t lg:border-t-0 lg:border-l space-y-4 overflow-y-auto">
-          <div>
-            <h3 className="font-semibold mb-3">{t.mergedTrack}</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.totalDistance}</p>
-                <p className="text-lg font-semibold">{formatDistance(stats.totalDistance)}</p>
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          {statTiles.map((tile) => (
+            <div key={tile.label} className="map-stat-tile">
+              <div className="mb-3 inline-flex size-9 items-center justify-center rounded-xl bg-primary/10">
+                {tile.icon}
               </div>
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.totalTime}</p>
-                <p className="text-lg font-semibold">{formatDuration(stats.totalTime)}</p>
-              </div>
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.movingTime}</p>
-                <p className="text-lg font-semibold">{formatDuration(stats.totalMovingTime)}</p>
-              </div>
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.avgSpeed}</p>
-                <p className="text-lg font-semibold">{stats.avgSpeed.toFixed(1)} km/h</p>
-              </div>
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.maxSpeed}</p>
-                <p className="text-lg font-semibold">{(stats.maxSpeed * 3.6).toFixed(1)} km/h</p>
-              </div>
-              <div className="p-3 bg-muted rounded">
-                <p className="text-xs text-muted-foreground">{t.elevation}</p>
-                <p className="text-lg font-semibold">{stats.totalElevation.toFixed(0)} m</p>
-              </div>
-              {stats.avgPower > 0 && (
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{lang === 'zh' ? '平均功率' : 'Avg Power'}</p>
-                  <p className="text-lg font-semibold">{stats.avgPower.toFixed(0)} W</p>
-                </div>
-              )}
-              {stats.maxPower > 0 && (
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-xs text-muted-foreground">{lang === 'zh' ? '最大功率' : 'Max Power'}</p>
-                  <p className="text-lg font-semibold">{stats.maxPower.toFixed(0)} W</p>
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">{tile.label}</p>
+              <p className="mt-1 text-lg font-semibold">{tile.value}</p>
             </div>
+          ))}
+
+          {stats.avgPower > 0 && (
+            <div className="map-stat-tile">
+              <div className="mb-3 inline-flex size-9 items-center justify-center rounded-xl bg-primary/10">
+                <Activity className="size-4 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">{t.avgPower}</p>
+              <p className="mt-1 text-lg font-semibold">{stats.avgPower.toFixed(0)} W</p>
+            </div>
+          )}
+
+          {stats.maxPower > 0 && (
+            <div className="map-stat-tile">
+              <div className="mb-3 inline-flex size-9 items-center justify-center rounded-xl bg-primary/10">
+                <Activity className="size-4 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">{t.maxPower}</p>
+              <p className="mt-1 text-lg font-semibold">{stats.maxPower.toFixed(0)} W</p>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-border/70 bg-muted/40 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-medium">{t.uploadedFiles}</p>
+            <Badge variant="secondary">{legendFiles.length}</Badge>
           </div>
 
-          <div>
-            <h3 className="font-semibold mb-2">{t.uploadedFiles} ({files.length})</h3>
-            <div className="space-y-2">
-              {files.map((file, index) => (
-                <div key={file.id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][index % 6] }}
+          {legendFiles.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {legendFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-3 rounded-2xl border border-border/65 bg-background/85 px-3 py-3 text-sm"
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: file.color }}
                   />
-                  <span className="flex-1 truncate">{file.name}</span>
+                  <span className="truncate">{file.name}</span>
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border/80 bg-background/75 px-4 py-5 text-sm text-muted-foreground">
+              {t.noTrackDescription}
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   )
 
   if (inline) {
-    return (
-      <Card className="w-full flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-semibold">{t.mapView}</h3>
+    if (minimal) {
+      if (staticPreview) {
+        return (
+          <div className="merged-map overflow-hidden rounded-xl border border-border/70 bg-white/85 shadow-[0_20px_70px_rgba(15,23,42,0.05)]">
+            <img
+              src="/reference-map-preview.png"
+              alt={t.mergedTrack}
+              className="h-[380px] w-full object-cover"
+            />
+          </div>
+        )
+      }
+
+      return (
+        <div className="merged-map overflow-hidden rounded-xl border border-border/70 bg-white/85 shadow-[0_20px_70px_rgba(15,23,42,0.05)]">
+          <div className="min-h-[340px] w-full lg:min-h-[380px]" ref={containerRef} />
         </div>
-        {mapContent}
+      )
+    }
+
+    return (
+      <Card className="panel-surface overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex size-11 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+              <MapIcon />
+            </div>
+            <div className="flex flex-col gap-1">
+              <CardTitle>{t.previewTitle}</CardTitle>
+              <CardDescription>
+                {parsedFiles.length > 0 ? t.previewDescription : t.noTrackData}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {parsedFiles.length > 0 ? (
+            mapContent
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-border/80 bg-muted/35 px-6 py-14 text-center">
+              <p className="text-base font-medium">{t.noTrackData}</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t.noTrackDescription}</p>
+            </div>
+          )}
+        </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-6xl h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-semibold">{t.mapView}</h2>
-          {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X size={20} />
-            </Button>
-          )}
-        </div>
-        {mapContent}
+    <div className="fixed inset-0 z-50 bg-black/45 p-4 backdrop-blur-sm">
+      <Card className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex size-11 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+                <MapIcon />
+              </div>
+              <div className="flex flex-col gap-1">
+                <CardTitle>{t.mapView}</CardTitle>
+                <CardDescription>{t.previewDescription}</CardDescription>
+              </div>
+            </div>
+            {onClose && (
+              <Button type="button" variant="ghost" size="icon" onClick={onClose}>
+                <X />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 pt-6">{mapContent}</CardContent>
       </Card>
     </div>
   )

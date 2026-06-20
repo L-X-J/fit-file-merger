@@ -1,27 +1,149 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import {
+  Bike,
+  Calendar,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Download,
+  FilePlus2,
+  Footprints,
+  Layers3,
+  LockKeyhole,
+  Languages,
+  MapPinned,
+  Route,
+  Settings2,
+  Shield,
+  Trash2,
+} from 'lucide-react'
+
 import { FileUploadZone } from '@/components/FileUploadZone'
-import { FileListItem } from '@/components/FileListItem'
 import { MergeOptionsDialog } from '@/components/MergeOptionsDialog'
 import { TrackMap } from '@/components/TrackMap'
-import { parseFitFile, mergeFitFiles, downloadMergedFile } from '@/lib/fitParser'
-import { FitFileData, MergeOptions } from '@/lib/types'
-import { useTranslations, Language } from '@/lib/i18n'
-import { 
-  FilePlus, 
-  DownloadSimple, 
-  CheckCircle, 
-  Warning,
-  ArrowLeft,
-  ArrowRight,
-  CircleNotch,
-  Globe
-} from '@phosphor-icons/react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Toaster } from '@/components/ui/sonner'
+import {
+  downloadMergedFile,
+  formatDistance,
+  mergeFitFiles,
+  parseFitFile,
+} from '@/lib/fitParser'
+import { useTranslations, type Language } from '@/lib/i18n'
+import type { FitFileData, MergeOptions } from '@/lib/types'
+
+type FlowStep = 1 | 2 | 3
+
+const demoActivities = [
+  {
+    name: 'Morning Run.fit',
+    device: 'Garmin Forerunner 955',
+    sport: 'Run',
+    duration: 45 * 60 + 12,
+    distance: 8.24,
+    startTime: new Date('2024-05-18T07:15:00'),
+    totalAscent: 164,
+    source: '/sample_data/Ride_on_10_6_2026_.fit',
+  },
+  {
+    name: 'Weekend Ride.fit',
+    device: 'Garmin Edge 840',
+    sport: 'Ride',
+    duration: 1 * 3600 + 56 * 60 + 43,
+    distance: 56.73,
+    startTime: new Date('2024-05-18T09:02:00'),
+    totalAscent: 812,
+    source: '/sample_data/Ride_on_14_6_2026.fit',
+  },
+  {
+    name: 'Trail Run.fit',
+    device: 'Polar Vantage V2',
+    sport: 'Run',
+    duration: 1 * 3600 + 2 * 60 + 18,
+    distance: 11.08,
+    startTime: new Date('2024-05-19T06:47:00'),
+    totalAscent: 265,
+    source: '/sample_data/Ride_on_10_6_2026_.fit',
+  },
+  {
+    name: 'Evening Ride.fit',
+    device: 'Suunto 9 Peak',
+    sport: 'Ride',
+    duration: 2 * 3600 + 31 * 60 + 9,
+    distance: 72.41,
+    startTime: new Date('2024-05-19T17:03:00'),
+    totalAscent: 545,
+    source: '/sample_data/Ride_on_14_6_2026.fit',
+  },
+]
+
+const formatClockDuration = (seconds?: number) => {
+  if (!seconds) return 'N/A'
+  const totalSeconds = Math.floor(seconds)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const secs = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  return `${minutes}:${String(secs).padStart(2, '0')}`
+}
+
+const formatActivityDate = (date?: Date) => {
+  if (!date) return { date: 'N/A', time: '' }
+  return {
+    date: new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date),
+    time: new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date),
+  }
+}
+
+const LogoMark = () => (
+  <svg
+    aria-hidden="true"
+    className="h-10 w-10 text-primary"
+    viewBox="0 0 44 44"
+    fill="none"
+  >
+    <path
+      d="M5 31.5 17.3 9.8l6.2 10.7 4.4-7.7L39 31.5h-6.4l-4.7-8.2-4.4 7.8-6.2-10.6-6.3 11H5Z"
+      fill="currentColor"
+    />
+    <path d="M17.3 9.8 13.2 31.5M27.9 12.8l-2.8 18.7" stroke="white" strokeWidth="2.8" strokeLinecap="round" />
+  </svg>
+)
+
+const getSportIcon = (sport?: string) => {
+  const normalized = sport?.toLowerCase() || ''
+  if (normalized.includes('bike') || normalized.includes('ride') || normalized.includes('cycling')) {
+    return <Bike className="size-5" />
+  }
+  return <Footprints className="size-5" />
+}
+
+const getSportTone = (sport?: string) => {
+  const normalized = sport?.toLowerCase() || ''
+  return normalized.includes('bike') || normalized.includes('ride') || normalized.includes('cycling')
+    ? 'bg-emerald-100 text-emerald-600'
+    : 'bg-blue-100 text-primary'
+}
+
+const getFileDevice = (file: FitFileData) =>
+  demoActivities.find((activity) => activity.name === file.name)?.device ||
+  (file.metadata?.sport ? `${file.metadata.sport} activity` : 'Garmin activity')
 
 function App() {
   const [files, setFiles] = useState<FitFileData[]>([])
@@ -30,58 +152,146 @@ function App() {
     preserveAllData: true,
     removeDuplicateTimestamps: true,
   })
-  const [mergedData, setMergedData] = useState<any>(null)
+  const [mergedData, setMergedData] = useState<Blob | null>(null)
   const [isMerging, setIsMerging] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
   const [language, setLanguage] = useState<Language>('en')
-  const t = useTranslations(language)
+  const [currentStep, setCurrentStep] = useState<FlowStep>(1)
+  const addMoreInputRef = useRef<HTMLInputElement>(null)
+  const demoMode =
+    import.meta.env.DEV && typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('demo')
+      : null
 
-  const parsedFiles = files.filter(f => f.status === 'parsed')
+  const t = useTranslations(language)
+  const parsedFiles = files.filter((file) => file.status === 'parsed')
+  const errorFiles = files.filter((file) => file.status === 'error')
   const canMerge = parsedFiles.length >= 2
 
+  const mergedStats = useMemo(() => {
+    if (demoMode === 'preview') {
+      return {
+        totalDistance: 89.32,
+        totalDuration: 3 * 3600 + 45 * 60 + 18,
+        totalElevation: 1786,
+      }
+    }
+
+    const totalDistance = parsedFiles.reduce((sum, file) => sum + (file.metadata?.distance || 0), 0)
+    const totalDuration = parsedFiles.reduce((sum, file) => sum + (file.metadata?.duration || 0), 0)
+    const totalElevation = parsedFiles.reduce((sum, file) => sum + (file.metadata?.totalAscent || 0), 0)
+
+    return { totalDistance, totalDuration, totalElevation }
+  }, [demoMode, parsedFiles])
+
+  const steps: Array<{ id: FlowStep; pill: string; label: string }> = [
+    { id: 1, pill: t.stepOnePill, label: t.stepOneTitle },
+    { id: 2, pill: t.stepTwoPill, label: t.stepReview },
+    { id: 3, pill: t.stepThreePill, label: t.stepDownload },
+  ]
+
+  const invalidateMergedData = () => setMergedData(null)
+
+  const toggleLanguage = () => {
+    setLanguage((current) => (current === 'en' ? 'zh' : 'en'))
+  }
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    if (demoMode !== 'review' && demoMode !== 'preview') return
+
+    let cancelled = false
+
+    const loadDemoFiles = async () => {
+      const demoFiles = await Promise.all(
+        demoActivities.map(async (activity, index) => {
+          const response = await fetch(activity.source)
+          const blob = await response.blob()
+          const file = new File([blob], activity.name, { type: 'application/octet-stream' })
+          const result = await parseFitFile(file)
+
+          return {
+            id: `demo-${index}`,
+            name: activity.name,
+            file,
+            parsed: result.data,
+            metadata: {
+              activityType: activity.sport,
+              sport: activity.sport,
+              duration: activity.duration,
+              distance: activity.distance,
+              startTime: activity.startTime,
+              totalAscent: activity.totalAscent,
+            },
+            status: 'parsed' as const,
+          }
+        })
+      )
+
+      if (cancelled) return
+
+      setFiles(demoFiles)
+      setCurrentStep(demoMode === 'preview' ? 3 : 2)
+
+      if (demoMode === 'preview') {
+        setMergedData(new Blob([new Uint8Array([0])], { type: 'application/octet-stream' }))
+      }
+    }
+
+    void loadDemoFiles().catch((error) => {
+      console.error('Failed to load demo files', error)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [demoMode])
+
   const handleFilesSelected = async (newFiles: File[]) => {
-    const fileDataArray: FitFileData[] = newFiles.map(file => ({
+    invalidateMergedData()
+
+    const fileDataArray: FitFileData[] = newFiles.map((file) => ({
       id: `${file.name}-${Date.now()}-${Math.random()}`,
       name: file.name,
       file,
-      status: 'pending' as const,
+      status: 'pending',
     }))
 
-    setFiles(prev => [...prev, ...fileDataArray])
+    setFiles((previous) => [...previous, ...fileDataArray])
+    if (currentStep === 1) setCurrentStep(2)
 
     for (const fileData of fileDataArray) {
-      setFiles(prev =>
-        prev.map(f => (f.id === fileData.id ? { ...f, status: 'parsing' as const } : f))
+      setFiles((previous) =>
+        previous.map((file) => (file.id === fileData.id ? { ...file, status: 'parsing' } : file))
       )
 
       try {
         const result = await parseFitFile(fileData.file)
-        
-        setFiles(prev =>
-          prev.map(f =>
-            f.id === fileData.id
+        setFiles((previous) =>
+          previous.map((file) =>
+            file.id === fileData.id
               ? {
-                  ...f,
-                  status: 'parsed' as const,
+                  ...file,
+                  status: 'parsed',
                   parsed: result.data,
                   metadata: result.metadata,
                 }
-              : f
+              : file
           )
         )
         toast.success(`${fileData.name} ${t.parseSuccess}`)
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : t.parseFailed
-        setFiles(prev =>
-          prev.map(f =>
-            f.id === fileData.id
+        const message = error instanceof Error ? error.message : t.parseFailed
+        setFiles((previous) =>
+          previous.map((file) =>
+            file.id === fileData.id
               ? {
-                  ...f,
-                  status: 'error' as const,
-                  error: errorMessage,
+                  ...file,
+                  status: 'error',
+                  error: message,
                 }
-              : f
+              : file
           )
         )
         toast.error(`${t.parseFailed}: ${fileData.name}`)
@@ -89,14 +299,23 @@ function App() {
     }
   }
 
-  const handleRemoveFile = (id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id))
-    if (mergedData) {
-      setMergedData(null)
+  const handleAdditionalFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      void handleFilesSelected(Array.from(event.target.files))
+      event.target.value = ''
     }
   }
 
-  const handleMerge = async () => {
+  const handleRemoveFile = (id: string) => {
+    invalidateMergedData()
+    setFiles((previous) => {
+      const nextFiles = previous.filter((file) => file.id !== id)
+      if (nextFiles.length === 0) setCurrentStep(1)
+      return nextFiles
+    })
+  }
+
+  const handleContinueToPreview = async () => {
     if (!canMerge) {
       toast.error(t.needTwoFiles)
       return
@@ -106,11 +325,10 @@ function App() {
     try {
       const merged = await mergeFitFiles(parsedFiles, mergeOptions)
       setMergedData(merged)
-      toast.success(t.mergeSuccess)
       setCurrentStep(3)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t.mergeError
-      toast.error(errorMessage)
+      const message = error instanceof Error ? error.message : t.mergeError
+      toast.error(message)
     } finally {
       setIsMerging(false)
     }
@@ -119,315 +337,549 @@ function App() {
   const handleDownload = async () => {
     if (!mergedData) return
 
-    await downloadBlob(mergedData)
-  }
-
-  const downloadBlob = async (blob: Blob) => {
     setIsDownloading(true)
     try {
-      const filename = await downloadMergedFile(blob)
+      const filename = await downloadMergedFile(mergedData)
       toast.success(`${t.downloadedAs} ${filename}`)
-    } catch (error) {
+    } catch {
       toast.error(t.mergeError)
     } finally {
       setIsDownloading(false)
     }
   }
 
-  const handleContinueToMerge = () => {
-    setCurrentStep(3)
-  }
-
-  const toggleLanguage = () => {
-    setLanguage(prev => prev === 'en' ? 'zh' : 'en')
-  }
-
-  useEffect(() => {
-    if (mergedData) {
-      setCurrentStep(3)
-    } else if (files.length > 0) {
-      setCurrentStep(2)
-    } else {
-      setCurrentStep(1)
-    }
-  }, [files.length, mergedData])
+  const stepTitle =
+    currentStep === 1 ? t.heroTitle : currentStep === 2 ? t.stepTwoTitle : t.stepThreeTitle
+  const stepSubtitle =
+    currentStep === 1
+      ? t.heroDescription
+      : currentStep === 2
+        ? t.stepTwoSubtitle
+        : t.stepThreeSubtitle
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1" />
-            <h1 className="text-4xl font-bold tracking-tight flex-1">{t.title}</h1>
-            <div className="flex-1 flex justify-end">
+    <>
+      <div className="app-shell">
+        <header className="relative z-10 border-b border-border/70 bg-white/90 backdrop-blur-xl">
+          <div className="mx-auto flex h-[4.85rem] max-w-[100rem] items-center justify-between px-6 lg:px-10">
+            <div className="flex items-center gap-4">
+              <LogoMark />
+              <span className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                {t.title}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground md:inline-flex">
+                <Shield className="size-4 text-primary" />
+                {t.privacyHeader}
+              </div>
+              <Button type="button" variant="outline" className="rounded-full px-5">
+                {t.learnMore}
+              </Button>
               <Button
-                variant="ghost"
-                size="sm"
+                type="button"
+                variant="outline"
+                className="rounded-full px-4"
                 onClick={toggleLanguage}
-                className="rounded-full"
+                aria-label={t.languageLabel}
               >
-                <Globe size={18} className="mr-2" weight="duotone" />
+                <Languages className="size-4" />
                 {language === 'en' ? '中文' : 'English'}
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="rounded-full text-slate-900">
+                <Settings2 className="size-5" />
               </Button>
             </div>
           </div>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            {t.subtitle}
-          </p>
-          <Badge variant="secondary" className="mt-4 px-4 py-1.5">
-            <CheckCircle size={14} className="mr-1.5" weight="fill" />
-            {t.privacyNote}
-          </Badge>
-        </motion.div>
+        </header>
 
-        <div className="flex items-center justify-center gap-4 mb-10">
-          {[1, 2, 3].map(step => (
-            <motion.div
-              key={step}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: step * 0.1 }}
-              className="flex items-center"
-            >
-              <div
-                className={`
-                  flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all duration-300
-                  ${currentStep === step ? 'bg-primary text-primary-foreground scale-110 shadow-lg' : ''}
-                  ${currentStep > step ? 'bg-primary/20 text-primary' : ''}
-                  ${currentStep < step ? 'bg-muted text-muted-foreground' : ''}
-                `}
-              >
-                {currentStep > step ? <CheckCircle size={20} weight="fill" /> : step}
+        <main className="relative min-h-[calc(100vh-4.85rem)] overflow-hidden">
+          <div className="scenic-backdrop" />
+          <div className="mountain-haze mountain-haze-left" />
+          <div className="mountain-haze mountain-haze-right" />
+
+          <div
+            className={`relative z-[1] mx-auto max-w-[96rem] px-4 sm:px-6 lg:px-10 ${
+              currentStep === 3 ? 'py-5' : 'py-8'
+            }`}
+          >
+            <section className="mx-auto max-w-5xl text-center">
+              <div className="mb-7 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold text-slate-500">
+                {steps.map((step, index) => {
+                  const isActive = step.id === currentStep
+                  const isDone = step.id < currentStep
+
+                  return (
+                    <div key={step.id} className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
+                        {isActive && (
+                          <span className="rounded-full border border-primary/15 bg-white px-4 py-2 text-primary shadow-sm">
+                            {step.pill}
+                          </span>
+                        )}
+                        <span
+                          className={
+                            isDone
+                              ? 'inline-flex items-center gap-1.5 text-slate-700'
+                              : isActive
+                                ? 'text-slate-800'
+                                : 'text-slate-400'
+                          }
+                        >
+                          {isDone && <Check className="size-4 text-primary" />}
+                          {step.label}
+                        </span>
+                      </div>
+                      {index < steps.length - 1 && (
+                        <ChevronRight className="size-4 text-slate-400" />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              {step < 3 && (
-                <div
-                  className={`w-16 h-0.5 mx-2 transition-all duration-300 ${
-                    currentStep > step ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
 
-        <AnimatePresence mode="wait">
-          {currentStep === 1 && (
-            <motion.div
-              key="step-1"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-6"
-            >
-              <Card className="p-8 border-2">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">{t.step1Title}</h2>
-                  <p className="text-muted-foreground">{t.step1Description}</p>
-                </div>
-                <FileUploadZone onFilesSelected={handleFilesSelected} lang={language} t={t} />
-              </Card>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: currentStep === 1 ? 12 : 0 }}
+              >
+                <h1 className="mx-auto max-w-6xl text-4xl font-bold tracking-tight text-balance text-slate-950 sm:text-5xl lg:text-[3.35rem]">
+                  {stepTitle}
+                </h1>
+                <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+                  {stepSubtitle}
+                </p>
+              </motion.div>
+            </section>
 
-              {files.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card className="p-6 border-2">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-semibold">{t.uploadedFiles}</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.querySelector<HTMLInputElement>('input[type="file"]')?.click()}
-                        className="rounded-full"
-                      >
-                        <FilePlus size={16} className="mr-2" weight="duotone" />
-                        {t.addMore}
-                      </Button>
+            {currentStep === 1 && (
+              <section className="mx-auto mt-12 max-w-[61.5rem]">
+                <div className="overflow-hidden rounded-[1.25rem] border border-dashed border-primary/45 bg-white/82 px-5 py-5 shadow-[0_22px_70px_rgba(15,23,42,0.045)] backdrop-blur-sm sm:px-7 sm:py-6">
+                  <FileUploadZone onFilesSelected={handleFilesSelected} t={t} variant="hero" />
+
+                  <div className="mt-5 grid gap-4 border-t border-slate-200/80 pt-5 sm:grid-cols-3">
+                    <div className="flex items-center justify-center gap-3 sm:border-r sm:border-border/70">
+                      <span className="inline-flex size-11 items-center justify-center rounded-full bg-blue-100 text-primary">
+                        <LockKeyhole className="size-5" />
+                      </span>
+                      <p className="max-w-[9rem] text-sm font-semibold leading-6 text-slate-700">
+                        {t.browserProcessing}
+                      </p>
                     </div>
-                    <div className="space-y-3">
-                      {files.map(fileData => (
-                        <FileListItem
-                          key={fileData.id}
-                          fileData={fileData}
-                          onRemove={() => handleRemoveFile(fileData.id)}
-                          lang={language}
-                          t={t}
-                        />
-                      ))}
+                    <div className="flex items-center justify-center gap-3 sm:border-r sm:border-border/70">
+                      <span className="inline-flex size-11 items-center justify-center rounded-full bg-blue-100 text-primary">
+                        <MapPinned className="size-5" />
+                      </span>
+                      <p className="max-w-[9rem] text-sm font-semibold leading-6 text-slate-700">
+                        {t.compatibilityLabel}
+                      </p>
                     </div>
-                    {!canMerge && (
-                      <Alert className="mt-6 border-primary/30 bg-primary/5">
-                        <Warning className="h-4 w-4 text-primary" weight="duotone" />
-                        <AlertDescription className="text-sm">
-                          {t.uploadWarning}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    {canMerge && (
-                      <Button
-                        size="lg"
-                        className="w-full mt-6 rounded-full"
-                        onClick={() => setCurrentStep(2)}
-                      >
-                        {t.continueToPreview}
-                        <ArrowRight size={18} className="ml-2" weight="bold" />
-                      </Button>
-                    )}
-                  </Card>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-
-          {currentStep === 2 && (
-            <motion.div
-              key="step-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-6"
-            >
-              <Card className="p-8 border-2">
-                <div className="mb-6 flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-semibold mb-2">{t.step2Title}</h2>
-                    <p className="text-muted-foreground">{t.step2Description}</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="inline-flex size-11 items-center justify-center rounded-full bg-blue-100 text-primary">
+                        <Layers3 className="size-5" />
+                      </span>
+                      <p className="max-w-[9rem] text-sm font-semibold leading-6 text-slate-700">
+                        {t.uploadSupport}
+                      </p>
+                    </div>
                   </div>
-                  <MergeOptionsDialog
-                    options={mergeOptions}
-                    onOptionsChange={setMergeOptions}
-                    lang={language}
-                    t={t}
-                  />
                 </div>
 
-                <div className="space-y-4 mb-6">
-                  {parsedFiles.map(fileData => (
-                    <FileListItem
-                      key={fileData.id}
-                      fileData={fileData}
-                      onRemove={() => handleRemoveFile(fileData.id)}
-                      lang={language}
+                <div className="mt-14 text-center">
+                  <h2 className="text-2xl font-semibold tracking-tight">{t.howItWorksTitle}</h2>
+                  <div className="mx-auto mt-7 grid max-w-4xl gap-8 sm:grid-cols-3">
+                    {[
+                      { number: 1, title: t.stepOneTitle, copy: t.stepOneSubtitle },
+                      { number: 2, title: t.stepTwoTitle, copy: t.stepTwoSubtitle },
+                      { number: 3, title: t.stepThreeTitle, copy: t.stepThreeSubtitle },
+                    ].map((item, index) => (
+                      <div key={item.number} className="relative px-4 text-center">
+                        {index > 0 && (
+                          <div className="absolute right-1/2 top-5 hidden h-px w-full border-t border-dashed border-primary/25 sm:block" />
+                        )}
+                        <div className="relative mx-auto inline-flex size-11 items-center justify-center rounded-full bg-blue-100 text-base font-semibold text-primary shadow-sm">
+                          {item.number}
+                        </div>
+                        <h3 className="mt-5 text-base font-semibold">{item.title}</h3>
+                        <p className="mx-auto mt-2 max-w-[13rem] text-sm leading-6 text-muted-foreground">
+                          {item.copy}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {currentStep === 2 && (
+              <section className="mx-auto mt-8 max-w-[72.5rem]">
+                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-3 text-base font-semibold text-slate-800">
+                    <span>
+                      {files.length} {t.filesSelected}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="inline-flex items-center gap-2 text-emerald-600">
+                      {parsedFiles.length} {t.validFiles}
+                      <CheckCircle2 className="size-4" />
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <MergeOptionsDialog
+                      options={mergeOptions}
+                      onOptionsChange={(nextOptions) => {
+                        setMergeOptions(nextOptions)
+                        invalidateMergedData()
+                      }}
                       t={t}
-                      showTrack={true}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
+                      onClick={() => addMoreInputRef.current?.click()}
+                    >
+                      <FilePlus2 className="size-4" />
+                      {t.addMore}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="grid min-h-[5.75rem] items-center gap-4 rounded-xl border border-border/70 bg-white/88 px-5 py-4 shadow-[0_8px_26px_rgba(15,23,42,0.035)] backdrop-blur-sm md:grid-cols-[1.6fr_0.56fr_0.9fr_0.68fr_0.74fr_0.72fr_auto]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-4">
+                          <span
+                            className={`inline-flex size-12 shrink-0 items-center justify-center rounded-full ${getSportTone(file.metadata?.sport)}`}
+                          >
+                            {getSportIcon(file.metadata?.sport)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-[1.05rem] font-semibold text-foreground">
+                              {file.name}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {getFileDevice(file)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-800">
+                        <span
+                          className={`inline-flex size-2.5 rounded-full ${getSportTone(file.metadata?.sport).includes('emerald') ? 'bg-emerald-400' : 'bg-blue-300'}`}
+                        />
+                        {file.metadata?.sport || 'Activity'}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm text-slate-500">
+                        <Calendar className="size-4" />
+                        <span>
+                          <span className="block font-semibold text-slate-700">
+                            {formatActivityDate(file.metadata?.startTime).date}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            {formatActivityDate(file.metadata?.startTime).time}
+                          </span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm text-slate-500">
+                        <Clock3 className="size-4" />
+                        <span>
+                          <span className="block font-semibold text-slate-900">
+                            {formatClockDuration(file.metadata?.duration)}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">{t.duration}</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-sm text-slate-500">
+                        <MapPinned className="size-4" />
+                        <span>
+                          <span className="block font-semibold text-slate-900">
+                            {formatDistance(file.metadata?.distance)}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">{t.distance}</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`inline-flex size-5 items-center justify-center rounded-full ${
+                              file.status === 'parsed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : file.status === 'error'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <Check className="size-3" />
+                          </span>
+                          <span
+                            className={`text-sm font-semibold ${
+                              file.status === 'parsed'
+                                ? 'text-emerald-700'
+                                : file.status === 'error'
+                                  ? 'text-rose-700'
+                                  : 'text-slate-600'
+                            }`}
+                          >
+                            <span className="block">
+                              {file.status === 'parsed'
+                                ? t.parsed
+                                : file.status === 'error'
+                                  ? t.error
+                                  : file.status === 'parsing'
+                                    ? t.parsing
+                                    : t.pending}
+                            </span>
+                            <span className="text-xs text-slate-500">{t.parseSuccess}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-9 rounded-lg border border-border/70 bg-white/80"
+                        onClick={() => handleRemoveFile(file.id)}
+                        aria-label={`${t.removeFile}: ${file.name}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+
+                      {file.status === 'error' && file.error && (
+                        <div className="md:col-span-7">
+                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {file.error}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                {errorFiles.length > 0 && (
+                  <Alert variant="destructive" className="mt-4 rounded-[1.25rem]">
+                    <AlertTitle>
+                      {errorFiles.length} {t.invalidFiles}
+                    </AlertTitle>
+                    <AlertDescription>{t.queueHint}</AlertDescription>
+                  </Alert>
+                )}
+
+                {errorFiles.length === 0 && files.length > 0 && (
+                  <div className="mt-5 rounded-[1.25rem] border border-primary/20 bg-white/75 px-5 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.04)]">
+                    <div className="flex items-center gap-4">
+                      <span className="inline-flex size-12 items-center justify-center rounded-full bg-blue-100 text-primary">
+                        <Shield className="size-5" />
+                      </span>
+                      <div>
+                        <p className="text-lg font-semibold text-primary">{t.allGood}</p>
+                        <p className="mt-1 text-sm font-medium text-slate-700">{t.allFilesReady}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-5 flex items-center justify-between gap-4">
                   <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 rounded-full"
+                    type="button"
+                    variant="ghost"
+                    className="rounded-full px-4"
                     onClick={() => setCurrentStep(1)}
                   >
-                    <ArrowLeft size={18} className="mr-2" weight="bold" />
                     {t.back}
                   </Button>
+
                   <Button
+                    type="button"
                     size="lg"
-                    className="flex-1 rounded-full"
-                    onClick={handleContinueToMerge}
-                    disabled={!canMerge}
+                    className="rounded-full px-6"
+                    onClick={handleContinueToPreview}
+                    disabled={!canMerge || isMerging}
                   >
-                    {t.continueToMerge}
-                    <ArrowRight size={18} className="ml-2" weight="bold" />
+                    {isMerging ? t.merging : t.continueToPreview}
+                    <ChevronRight className="size-4" />
                   </Button>
                 </div>
-              </Card>
-            </motion.div>
-          )}
+              </section>
+            )}
 
-          {currentStep === 3 && (
-            <motion.div
-              key="step-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="space-y-6"
-            >
-              <Card className="p-8 border-2">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold mb-2">{t.step3Title}</h2>
-                  <p className="text-muted-foreground">{t.step3Description}</p>
-                </div>
+            {currentStep === 3 && (
+              <section className="mx-auto mt-4 max-w-[82rem]">
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_26rem]">
+                  <div className="space-y-6">
+                    <TrackMap
+                      files={parsedFiles}
+                      t={t}
+                      inline
+                      minimal
+                      staticPreview={demoMode === 'preview'}
+                    />
 
-                <TrackMap files={parsedFiles} lang={language} t={t} inline={true} />
+                    <Card className="overflow-hidden rounded-xl border-border/70 bg-white/88 py-0 shadow-[0_20px_70px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+                      <CardContent className="p-6">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {t.sourceFiles} ({parsedFiles.length})
+                          </h3>
+                        </div>
 
-                <div className="flex gap-3 mt-6">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 rounded-full"
-                    onClick={() => {
-                      setCurrentStep(2)
-                    }}
-                  >
-                    <ArrowLeft size={18} className="mr-2" weight="bold" />
-                    {t.back}
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="flex-1 rounded-full bg-primary hover:bg-primary/90"
-                    onClick={async () => {
-                      if (mergedData) {
-                        await handleDownload()
-                      } else {
-                        setIsMerging(true)
-                        try {
-                          const merged = await mergeFitFiles(parsedFiles, mergeOptions)
-                          setMergedData(merged)
-                          await downloadBlob(merged)
-                        } catch (error) {
-                          const errorMessage = error instanceof Error ? error.message : t.mergeError
-                          toast.error(errorMessage)
-                        } finally {
-                          setIsMerging(false)
-                        }
-                      }
-                    }}
-                    disabled={isMerging || isDownloading}
-                  >
-                    {isMerging || isDownloading ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        <div className="flex flex-col gap-3">
+                          {parsedFiles.map((file) => (
+                            <div
+                              key={file.id}
+                              className="grid items-center gap-3 text-sm md:grid-cols-[1.45fr_0.55fr_0.9fr_0.8fr_0.7fr]"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span
+                                  className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full ${getSportTone(file.metadata?.sport)}`}
+                                >
+                                  {getSportIcon(file.metadata?.sport)}
+                                </span>
+                                <p className="truncate font-semibold text-slate-900">{file.name}</p>
+                              </div>
+                              <p className="flex items-center gap-2 font-semibold text-slate-600 capitalize">
+                                <span
+                                  className={`inline-flex size-2 rounded-full ${getSportTone(file.metadata?.sport).includes('emerald') ? 'bg-emerald-400' : 'bg-blue-300'}`}
+                                />
+                                {file.metadata?.sport || 'Activity'}
+                              </p>
+                              <p className="flex items-center gap-2 text-slate-500">
+                                <Calendar className="size-4" />
+                                {formatActivityDate(file.metadata?.startTime).date}
+                              </p>
+                              <p className="text-slate-500">
+                                {formatActivityDate(file.metadata?.startTime).time}
+                              </p>
+                              <p className="font-semibold text-slate-600">
+                                {formatDistance(file.metadata?.distance)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="h-11 rounded-lg bg-white/90 px-6 font-semibold shadow-sm"
+                      onClick={() => setCurrentStep(2)}
+                    >
+                      {t.back}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-6">
+                    <Card className="overflow-hidden rounded-xl border-border/70 bg-white/88 py-0 shadow-[0_20px_70px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+                      <CardContent className="space-y-4 p-6">
+                        <div className="flex items-center gap-3">
+                          <div className="inline-flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Route className="size-5" />
+                          </div>
+                          <h3 className="text-lg font-semibold">{t.mergedSummary}</h3>
+                        </div>
+
+                        <div className="grid grid-cols-2 border-y border-border/70">
+                          {[
+                            {
+                              label: t.totalDistance,
+                              value: formatDistance(mergedStats.totalDistance),
+                              icon: <MapPinned className="size-5" />,
+                            },
+                            {
+                              label: t.totalTime,
+                              value: formatClockDuration(mergedStats.totalDuration),
+                              icon: <Clock3 className="size-5" />,
+                            },
+                            {
+                              label: t.mergedActivities,
+                              value: `${parsedFiles.length} ${t.filesReady}`,
+                              icon: <Layers3 className="size-5" />,
+                            },
+                            {
+                              label: t.elevation,
+                              value: `${new Intl.NumberFormat('en-US').format(Math.round(mergedStats.totalElevation))} m`,
+                              icon: <Route className="size-5" />,
+                            },
+                          ].map((item, index) => (
+                            <div
+                              key={item.label}
+                              className={`flex gap-4 px-3 py-5 ${
+                                index % 2 === 0 ? 'border-r border-border/70' : ''
+                              } ${index < 2 ? 'border-b border-border/70' : ''}`}
+                            >
+                              <span className="mt-1 text-primary">{item.icon}</span>
+                              <span>
+                                <span className="block text-sm font-semibold text-slate-500">
+                                  {item.label}
+                                </span>
+                                <span className="mt-2 block text-[1.35rem] font-bold leading-tight text-slate-950">
+                                  {item.value}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-700">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex size-9 items-center justify-center rounded-full bg-emerald-500 text-white">
+                              <CheckCircle2 className="size-5" />
+                            </span>
+                            <div>
+                              <p className="text-base font-semibold">{t.mergePreviewLooksGreat}</p>
+                              <p className="mt-1 text-sm">{t.mergePreviewMessage}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="lg"
+                          className="h-[3.75rem] w-full rounded-md text-base font-semibold"
+                          onClick={handleDownload}
+                          disabled={!mergedData || isDownloading}
                         >
-                          <CircleNotch size={18} className="mr-2" />
-                        </motion.div>
-                        {isMerging ? t.merging : t.downloading}
-                      </>
-                    ) : (
-                      <>
-                        <DownloadSimple size={18} className="mr-2" weight="bold" />
-                        {t.download}
-                      </>
-                    )}
-                  </Button>
+                          <Download className="size-5" />
+                          {isDownloading ? t.downloading : t.download}
+                        </Button>
+
+                        <p className="text-center text-xs leading-6 text-muted-foreground">
+                          {t.browserProcessing} · {t.localOnlyHint}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  className="w-full mt-3 rounded-full"
-                  onClick={() => {
-                    setFiles([])
-                    setMergedData(null)
-                    setCurrentStep(1)
-                  }}
-                >
-                  {t.startOver}
-                </Button>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </section>
+            )}
+          </div>
+        </main>
       </div>
-    </div>
+
+      <input
+        ref={addMoreInputRef}
+        type="file"
+        accept=".fit,.FIT"
+        multiple
+        className="hidden"
+        onChange={handleAdditionalFileInput}
+      />
+      <Toaster position="top-right" richColors />
+    </>
   )
 }
 

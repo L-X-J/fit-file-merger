@@ -23,30 +23,6 @@ const summaryIgnoreFields = new Set([
   'eventGroup',
 ])
 
-const coreSessionFields = [
-  'totalDistance',
-  'totalElapsedTime',
-  'totalTimerTime',
-  'totalAscent',
-  'totalDescent',
-  'totalCalories',
-  'totalWork',
-  'avgSpeed',
-  'enhancedAvgSpeed',
-  'maxSpeed',
-  'enhancedMaxSpeed',
-  'avgPower',
-  'maxPower',
-  'normalizedPower',
-  'intensityFactor',
-  'trainingStressScore',
-  'avgCadence',
-  'maxCadence',
-  'avgHeartRate',
-  'maxHeartRate',
-  'minHeartRate',
-]
-
 const recordMetricFields = [
   'positionLat',
   'positionLong',

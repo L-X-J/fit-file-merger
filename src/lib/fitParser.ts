@@ -63,8 +63,6 @@ const extractMetadata = (messages: any) => {
 
   const sessionMsgs = messages.sessionMesgs || []
   const recordMsgs = messages.recordMesgs || []
-  const activityMsgs = messages.activityMesgs || []
-
   if (sessionMsgs.length > 0) {
     const session = sessionMsgs[0]
     

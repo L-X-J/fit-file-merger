@@ -1,93 +1,87 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Settings2 } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Gear } from '@phosphor-icons/react'
-import { MergeOptions } from '@/lib/types'
-import type { Language } from '@/lib/i18n'
+import type { MergeOptions } from '@/lib/types'
+import type { Translations } from '@/lib/i18n'
 
 interface MergeOptionsDialogProps {
   options: MergeOptions
   onOptionsChange: (options: MergeOptions) => void
-  lang: Language
-  t: any
+  t: Translations
 }
 
-export const MergeOptionsDialog = ({ options, onOptionsChange, lang, t }: MergeOptionsDialogProps) => {
+export const MergeOptionsDialog = ({ options, onOptionsChange, t }: MergeOptionsDialogProps) => {
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button
+          type="button"
           variant="outline"
-          size="icon"
-          className="rounded-full text-muted-foreground hover:text-foreground"
+          className="h-11 rounded-lg bg-white/90 px-5 font-semibold shadow-sm"
           aria-label={t.mergeOptions}
         >
-          <Gear size={18} weight="duotone" />
+          <Settings2 />
+          {t.mergeOptions}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[34rem]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Gear size={18} className="text-primary" weight="duotone" />
-            </div>
-            {t.mergeOptions}
-          </DialogTitle>
+          <DialogTitle>{t.mergeOptions}</DialogTitle>
+          <DialogDescription>{t.mergeOptionsHint}</DialogDescription>
         </DialogHeader>
-        
-        <div className="space-y-6 pt-4">
+
+        <div className="flex flex-col gap-5 pt-2">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1 flex-1">
-              <Label htmlFor="sort-chronologically" className="text-base font-medium cursor-pointer">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="dialog-sort-chronologically" className="text-sm font-medium">
                 {t.sortChronologically}
-              </Label>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {t.sortDescription}
-              </p>
+              </label>
+              <p className="text-sm leading-6 text-muted-foreground">{t.sortDescription}</p>
             </div>
             <Switch
-              id="sort-chronologically"
+              id="dialog-sort-chronologically"
               checked={options.sortChronologically}
-              onCheckedChange={(checked) =>
-                onOptionsChange({ ...options, sortChronologically: checked })
-              }
+              onCheckedChange={(checked) => onOptionsChange({ ...options, sortChronologically: checked })}
             />
           </div>
 
-          <div className="h-px bg-border" />
+          <Separator />
 
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1 flex-1">
-              <Label htmlFor="preserve-all-data" className="text-base font-medium cursor-pointer">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="dialog-preserve-all-data" className="text-sm font-medium">
                 {t.preserveAllData}
-              </Label>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {t.preserveDescription}
-              </p>
+              </label>
+              <p className="text-sm leading-6 text-muted-foreground">{t.preserveDescription}</p>
             </div>
             <Switch
-              id="preserve-all-data"
+              id="dialog-preserve-all-data"
               checked={options.preserveAllData}
-              onCheckedChange={(checked) =>
-                onOptionsChange({ ...options, preserveAllData: checked })
-              }
+              onCheckedChange={(checked) => onOptionsChange({ ...options, preserveAllData: checked })}
             />
           </div>
 
-          <div className="h-px bg-border" />
+          <Separator />
 
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1 flex-1">
-              <Label htmlFor="remove-duplicates" className="text-base font-medium cursor-pointer">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="dialog-remove-duplicates" className="text-sm font-medium">
                 {t.removeDuplicates}
-              </Label>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {t.removeDuplicatesDescription}
-              </p>
+              </label>
+              <p className="text-sm leading-6 text-muted-foreground">{t.removeDuplicatesDescription}</p>
             </div>
             <Switch
-              id="remove-duplicates"
+              id="dialog-remove-duplicates"
               checked={options.removeDuplicateTimestamps}
               onCheckedChange={(checked) =>
                 onOptionsChange({ ...options, removeDuplicateTimestamps: checked })

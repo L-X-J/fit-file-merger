@@ -8,9 +8,11 @@ import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
+const base = '/fit-file-merger/'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -27,21 +29,21 @@ export default defineConfig({
         theme_color: '#2f6df6',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         icons: [
           {
-            src: '/pwa-icon-192.png',
+            src: `${base}pwa-icon-192.png`,
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/pwa-icon-512.png',
+            src: `${base}pwa-icon-512.png`,
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: '/pwa-maskable-icon-512.png',
+            src: `${base}pwa-maskable-icon-512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
@@ -50,7 +52,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

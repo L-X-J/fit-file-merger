@@ -4,6 +4,11 @@
 
 应用采用清晰的三步流程：选择文件、检查预览、下载结果。所有解析和合并都在用户浏览器中完成，文件不会上传到服务器。
 
+## 在线访问
+
+- GitHub Pages: https://l-x-j.github.io/fit-file-merger/
+- Cloudflare: https://fit.cn-aipro.com
+
 ## 界面预览
 
 ### 1. 选择 FIT 文件

@@ -4,11 +4,13 @@ import "@github/spark/spark"
 
 import App from './App.tsx'
 import { ErrorFallback } from './ErrorFallback.tsx'
+import { PwaServiceWorker } from './components/PwaServiceWorker.tsx'
 
 import "./main.css"
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <PwaServiceWorker />
     <App />
    </ErrorBoundary>
 )

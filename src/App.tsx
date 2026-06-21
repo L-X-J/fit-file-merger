@@ -117,7 +117,7 @@ const formatActivityDate = (date?: Date) => {
 const LogoMark = () => (
   <svg
     aria-hidden="true"
-    className="h-10 w-10 text-primary"
+    className="h-10 w-10 shrink-0 text-primary"
     viewBox="0 0 44 44"
     fill="none"
   >
@@ -174,6 +174,7 @@ function App() {
   const [language, setLanguage] = useState<Language>(getDefaultLanguage)
   const [currentStep, setCurrentStep] = useState<FlowStep>(1)
   const addMoreInputRef = useRef<HTMLInputElement>(null)
+  const mergeRunIdRef = useRef(0)
   const demoMode =
     import.meta.env.DEV && typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('demo')
@@ -213,6 +214,7 @@ function App() {
   }
 
   const handleReturnToUpload = () => {
+    mergeRunIdRef.current += 1
     invalidateMergedData()
     setFiles([])
     setMergeProgress(0)
@@ -410,19 +412,26 @@ function App() {
       return
     }
 
+    const mergeRunId = mergeRunIdRef.current + 1
+    mergeRunIdRef.current = mergeRunId
     setIsMerging(true)
     try {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       const merged = await mergeFitFilesInWorker(parsedFiles, mergeOptions)
+      if (mergeRunIdRef.current !== mergeRunId) return
       setMergeProgress(100)
       await new Promise((resolve) => window.setTimeout(resolve, 360))
+      if (mergeRunIdRef.current !== mergeRunId) return
       setMergedData(merged)
       setCurrentStep(3)
     } catch (error) {
+      if (mergeRunIdRef.current !== mergeRunId) return
       const message = error instanceof Error ? error.message : t.mergeError
       toast.error(message)
     } finally {
-      setIsMerging(false)
+      if (mergeRunIdRef.current === mergeRunId) {
+        setIsMerging(false)
+      }
     }
   }
 
@@ -443,16 +452,21 @@ function App() {
   return (
     <>
       <div className="app-shell">
-        <header className="relative z-10 border-b border-border/70 bg-white/90 backdrop-blur-xl">
-          <div className="mx-auto flex h-[4.85rem] max-w-[100rem] items-center justify-between px-6 lg:px-10">
-            <div className="flex items-center gap-4">
+        <header className="fixed inset-x-0 top-0 z-40 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 lg:px-10">
+          <div className="mx-auto flex h-[3.75rem] max-w-[100rem] items-center justify-between gap-3 rounded-full border border-white/75 bg-white/88 px-3 shadow-[0_16px_44px_rgba(15,23,42,0.11)] backdrop-blur-xl sm:h-[4.25rem] sm:px-5">
+            <button
+              type="button"
+              className="group flex min-w-0 items-center gap-3 rounded-full px-1.5 py-1 text-left transition-colors hover:bg-slate-950/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:gap-4 sm:px-2"
+              onClick={handleReturnToUpload}
+              aria-label={t.backHome}
+            >
               <LogoMark />
-              <span className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              <span className="min-w-0 truncate text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
                 {t.title}
               </span>
-            </div>
+            </button>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground md:inline-flex">
                 <Shield className="size-4 text-primary" />
                 {t.privacyHeader}
@@ -460,25 +474,29 @@ function App() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full px-4"
+                className="h-10 rounded-full px-3 sm:px-4"
                 onClick={toggleLanguage}
                 aria-label={t.languageLabel}
               >
                 <Languages className="size-4" />
-                {language === 'en' ? '\u4e2d\u6587' : 'English'}
+                <span className="hidden sm:inline">
+                  {language === 'en' ? '\u4e2d\u6587' : 'English'}
+                </span>
               </Button>
             </div>
           </div>
         </header>
 
-        <main className="relative min-h-[calc(100vh-4.85rem)] overflow-hidden">
+        <main className="relative min-h-screen overflow-hidden">
           <div className="scenic-backdrop" />
           <div className="mountain-haze mountain-haze-left" />
           <div className="mountain-haze mountain-haze-right" />
 
           <div
             className={`relative z-[1] mx-auto max-w-[96rem] px-4 sm:px-6 lg:px-10 ${
-              currentStep === 3 ? 'py-5' : 'py-8'
+              currentStep === 3
+                ? 'pb-5 pt-[calc(env(safe-area-inset-top)+5.75rem)] sm:pt-[calc(env(safe-area-inset-top)+6.5rem)]'
+                : 'pb-8 pt-[calc(env(safe-area-inset-top)+6.25rem)] sm:pt-[calc(env(safe-area-inset-top)+7rem)]'
             }`}
           >
             <section className="mx-auto max-w-5xl text-center">

@@ -73,6 +73,7 @@ type TranslationDictionary = {
   invalidFiles: string
   validFiles: string
   languageLabel: string
+  backHome: string
   avgPower: string
   maxPower: string
   mergeReady: string
@@ -182,6 +183,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     invalidFiles: 'invalid files',
     validFiles: 'valid',
     languageLabel: 'Language',
+    backHome: 'Back to home',
     avgPower: 'Average Power',
     maxPower: 'Max Power',
     mergeReady: 'Ready for download',
@@ -285,6 +287,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     invalidFiles: '个无效文件',
     validFiles: '个有效',
     languageLabel: '语言',
+    backHome: '返回首页',
     avgPower: '平均功率',
     maxPower: '最大功率',
     mergeReady: '可下载',

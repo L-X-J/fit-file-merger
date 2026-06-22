@@ -13,7 +13,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@garmin/fitsdk": "^21.205.0",
+        "@garmin/fitsdk": "^21.208.0",
         "@github/spark": ">=0.43.1 <1",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^4.1.3",
